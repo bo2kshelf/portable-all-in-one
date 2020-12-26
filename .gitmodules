@@ -1,0 +1,12 @@
+[submodule "api/gateway"]
+	path = api/gateway
+	url = https://github.com/bo2kshelf/api-gateway.git
+[submodule "api/register"]
+	path = api/register
+	url = https://github.com/bo2kshelf/book-manage-api.git
+[submodule "api/bookcover"]
+	path = api/bookcover
+	url = https://github.com/bo2kshelf/bookcover-api.git
+[submodule "api/search"]
+	path = api/search
+	url = https://github.com/bo2kshelf/search-api.git
