@@ -1,0 +1,3 @@
+mongo-url = "mongodb://mongos:27017/?connect=direct"
+
+elasticsearch-urls = ["http://elasticsearch:9200"]

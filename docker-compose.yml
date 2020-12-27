@@ -1,8 +1,73 @@
 version: "3.8"
 
 services:
+  api-gateway:
+    container_name: api-gateway
+    hostname: api-gateway
+    build:
+      context: api/gateway
+      dockerfile: Dockerfile
+    ports:
+      - 4000:4000
+    networks:
+      - api
+    depends_on:
+      api-register:
+        condition: service_started
+      api-bookcover:
+        condition: service_started
+      api-search:
+        condition: service_started
+    environment:
+      BOOKS_API_URL: http://api-register:4000/graphql
+      BOOKCOVER_API_URL: http://api-bookcover:4000/graphql
+      SEARCH_API_URL: http://api-search:4000/graphql
+
+  api-register:
+    container_name: api-register
+    hostname: api-register
+    build:
+      context: api/register
+      dockerfile: Dockerfile
+    depends_on:
+      mongos:
+        condition: service_healthy
+    networks:
+      - api
+      - mongo
+    environment:
+      MONGO_URI: mongodb://mongos:27017
+
+  api-bookcover:
+    container_name: api-bookcover
+    hostname: api-bookcover
+    build:
+      context: api/bookcover
+      dockerfile: Dockerfile
+    networks:
+      - api
+
+  api-search:
+    container_name: api-search
+    hostname: api-search
+    build:
+      context: api/search
+      dockerfile: Dockerfile
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - api
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_NODE_URI: http://elasticsearch:9200
+      ELASTICSEARCH_BOOKS_INDEX: test.books
+      ELASTICSEARCH_AUTHORS_INDEX: test.authors
+      ELASTICSEARCH_SERIES_INDEX: test.series
+
   mongos:
     container_name: mongos
+    hostname: mongos
     image: mongo:4
     command: mongos --config /etc/mongos.conf --configdb config/mongo-configsvr
     volumes:
@@ -19,6 +84,7 @@ services:
       - 27017:27017
     networks:
       - mongo
+      - elasticsearch
     healthcheck:
       test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
       interval: 2s
@@ -58,6 +124,63 @@ services:
     hostname: mongo-shardsvr-2
     command: mongod --config /etc/mongoc.conf --replSet replset-2
 
+  elasticsearch:
+    container_name: elasticsearch
+    hostname: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+    networks:
+      - elasticsearch
+    healthcheck:
+      test: "curl --fail http://localhost:9200 || exit 1"
+      interval: 2s
+      timeout: 60s
+      retries: 300
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana-oss:7.9.3
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    links:
+      - elasticsearch:elasticsearch
+    ports:
+      - 5601:5601
+    networks:
+      - elasticsearch
+
+  monstache:
+    container_name: monstache
+    image: rwynn/monstache
+    command: -f /etc/monstache.toml
+    depends_on:
+      mongos:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - $PWD/docker/monstache/config.toml:/etc/monstache.toml
+    networks:
+      - elasticsearch
+    healthcheck:
+      test: "wget -q -O - http://localhost:8080/healthz"
+      interval: 10s
+      timeout: 10s
+      retries: 300
+
 networks:
+  api:
+    driver: bridge
   mongo:
+    driver: bridge
+  elasticsearch:
     driver: bridge
