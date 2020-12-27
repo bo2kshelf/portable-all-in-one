@@ -3,7 +3,7 @@
 	url = https://github.com/bo2kshelf/api-gateway.git
 [submodule "api/register"]
 	path = api/register
-	url = https://github.com/bo2kshelf/book-manage-api.git
+	url = https://github.com/bo2kshelf/register-api.git
 [submodule "api/bookcover"]
 	path = api/bookcover
 	url = https://github.com/bo2kshelf/bookcover-api.git
