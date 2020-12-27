@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  mongos:
+    container_name: mongos
+    image: mongo:4
+    command: mongos --config /etc/mongos.conf --configdb config/mongo-configsvr
+    volumes:
+      - $PWD/docker/mongo/config/mongos.conf:/etc/mongos.conf
+      - $PWD/docker/mongo/initdb/mongos:/docker-entrypoint-initdb.d
+    depends_on:
+      mongo-configsvr:
+        condition: service_healthy
+      mongo-shardsvr-1:
+        condition: service_healthy
+      mongo-shardsvr-2:
+        condition: service_healthy
+    ports:
+      - 27017:27017
+    networks:
+      - mongo
+    healthcheck:
+      test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
+      interval: 2s
+      start_period: 30s
+
+  mongo-configsvr:
+    container_name: mongo-configsvr
+    hostname: mongo-configsvr
+    image: mongo:4
+    command: mongod --config /etc/mongoc.conf --replSet config
+    volumes:
+      - $PWD/docker/mongo/config/configsvr.conf:/etc/mongoc.conf
+    networks:
+      - mongo
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo --port 27019 --quiet) -eq 1
+      interval: 5s
+      start_period: 30s
+
+  mongo-shardsvr-1: &mongo-shardsvr
+    container_name: mongo-shardsvr-1
+    hostname: mongo-shardsvr-1
+    image: mongo:4
+    command: mongod --config /etc/mongoc.conf --replSet replset-1
+    volumes:
+      - $PWD/docker/mongo/config/shardsvr.conf:/etc/mongoc.conf
+    networks:
+      - mongo
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo --port 27018 --quiet) -eq 1
+      interval: 5s
+      start_period: 30s
+
+  mongo-shardsvr-2:
+    <<: *mongo-shardsvr
+    container_name: mongo-shardsvr-2
+    hostname: mongo-shardsvr-2
+    command: mongod --config /etc/mongoc.conf --replSet replset-2
+
+networks:
+  mongo:
+    driver: bridge
