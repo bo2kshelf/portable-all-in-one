@@ -71,8 +71,8 @@ services:
     image: mongo:4
     command: mongos --config /etc/mongos.conf --configdb config/mongo-configsvr
     volumes:
-      - $PWD/docker/mongo/config/mongos.conf:/etc/mongos.conf
-      - $PWD/docker/mongo/initdb/mongos:/docker-entrypoint-initdb.d
+      - ./docker/mongo/config/mongos.conf:/etc/mongos.conf
+      - ./docker/mongo/initdb/mongos:/docker-entrypoint-initdb.d
     depends_on:
       mongo-configsvr:
         condition: service_healthy
@@ -96,7 +96,7 @@ services:
     image: mongo:4
     command: mongod --config /etc/mongoc.conf --replSet config
     volumes:
-      - $PWD/docker/mongo/config/configsvr.conf:/etc/mongoc.conf
+      - ./docker/mongo/config/configsvr.conf:/etc/mongoc.conf
     networks:
       - mongo
     healthcheck:
@@ -110,7 +110,7 @@ services:
     image: mongo:4
     command: mongod --config /etc/mongoc.conf --replSet replset-1
     volumes:
-      - $PWD/docker/mongo/config/shardsvr.conf:/etc/mongoc.conf
+      - ./docker/mongo/config/shardsvr.conf:/etc/mongoc.conf
     networks:
       - mongo
     healthcheck:
@@ -170,7 +170,7 @@ services:
       elasticsearch:
         condition: service_healthy
     volumes:
-      - $PWD/docker/monstache/config.toml:/etc/monstache.toml
+      - ./docker/monstache/config.toml:/etc/monstache.toml
     networks:
       - elasticsearch
     healthcheck:
