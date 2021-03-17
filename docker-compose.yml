@@ -5,6 +5,9 @@ services:
     image: willnorris/imageproxy
     networks:
       - imageproxy
+    ports:
+      - published: ${IMAGEPROXY_PORT}
+        target: 8080
     depends_on:
       imageproxy-redis:
         condition: service_healthy
@@ -64,7 +67,7 @@ services:
       PORT: 4000
       RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
       RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
-      IMAGEPROXY_BASE_URL: http://${IMAGEPROXY_HOST}
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
       REDIS_HOST: bookcover-api-redis
       REDIS_PORT: 6379
 
@@ -128,7 +131,7 @@ services:
         target: 4000
     environment:
       PORT: 4000
-      IMAGEPROXY_BASE_URL: http://${IMAGEPROXY_HOST}
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
       JWT_SECRET: $USERS_API_JWT_SECRET
       PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
 
@@ -159,7 +162,7 @@ services:
       - published: ${SEARCH_API_PORT}
         target: 4000
     environment:
-      ELASTICSEARCH_NODE_URI: http://search-elasticsearch:9200
+      ELASTICSEARCH_NODE_URI: http://search-api-elasticsearch:9200
       ELASTICSEARCH_BOOKS_INDEX: books
       ELASTICSEARCH_AUTHORS_INDEX: authors
       ELASTICSEARCH_SERIES_INDEX: series
