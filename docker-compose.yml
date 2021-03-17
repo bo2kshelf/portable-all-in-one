@@ -1,0 +1,272 @@
+version: "3.7"
+
+services:
+  imageproxy:
+    image: willnorris/imageproxy
+    networks:
+      - imageproxy
+    depends_on:
+      imageproxy-redis:
+        condition: service_healthy
+    environment:
+      IMAGEPROXY_CACHE: redis://imageproxy-redis:6379
+
+  imageproxy-redis:
+    image: redis:6
+    healthcheck: &redis-healthcheck
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - imageproxy
+    volumes:
+      - imageproxy-redis-data:/data
+
+  api-gateway:
+    image: ghcr.io/bo2kshelf/api-gateway:develop@sha256:d3dba208b6c8c47f3814b16f44697c830e6aacd63490b1a0d77d3e24da07c58e
+    networks:
+      - api
+    ports:
+      - published: ${API_GATEWAY_PORT}
+        target: 4000
+    depends_on:
+      bookcover-api:
+        condition: service_started
+      neo4j-api:
+        condition: service_started
+      users-api:
+        condition: service_started
+      search-api:
+        condition: service_started
+    environment:
+      PORT: 4000
+      BOOKS_API_URL: http://neo4j-api:4000/graphql
+      BOOKCOVER_API_URL: http://bookcover-api:4000/graphql
+      SEARCH_API_URL: http://search-api:4000/graphql
+      USERS_API_URL: http://users-api:4000/graphql
+      JWT_SECRET: $API_GATEWAY_JWT_SECRET
+      USER_API_ENDPOINT: http://users-api:4000
+
+  bookcover-api:
+    image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:d557ec434e2e91a7f0d34ec800402337d2d4ecaed03b49c4c898343e7338c795
+    networks:
+      - api
+      - bookcover-api
+      - imageproxy
+    ports:
+      - published: ${BOOKCOVER_API_PORT}
+        target: 4000
+    depends_on:
+      bookcover-api-redis:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
+      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
+      IMAGEPROXY_BASE_URL: http://${IMAGEPROXY_HOST}
+      REDIS_HOST: bookcover-api-redis
+      REDIS_PORT: 6379
+
+  bookcover-api-redis:
+    image: redis:6
+    healthcheck: *redis-healthcheck
+    networks:
+      - bookcover-api
+    volumes:
+      - bookcover-api-redis-data:/data
+
+  neo4j-api:
+    image: ghcr.io/bo2kshelf/neo4j-api:develop@sha256:15ecf203d23c9edca043bf695f46572a6e0634c28ac7b92b6f3ecbaec966439e
+    depends_on:
+      neo4j-api-neo4j:
+        condition: service_healthy
+    networks:
+      - api
+      - neo4j-api
+    ports:
+      - published: ${NEO4J_API_PORT}
+        target: 4000
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://neo4j-api-neo4j:7687
+      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+
+  neo4j-api-neo4j:
+    image: neo4j:4.2
+    networks:
+      - neo4j-api
+    healthcheck: &neo4j-healthcheck
+      test: wget http://localhost:7474/browser -O-
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    environment:
+      NEO4J_AUTH: ${NEO4J_API_NEO4J_USERNAME}/${NEO4J_API_NEO4J_PASSWORD}
+      NEO4JLABS_PLUGINS: '["apoc"]'
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_import_file_use__neo4j__config: "true"
+    volumes:
+      - neo4j-api-neo4j-data:/data
+      - neo4j-api-neo4j-logs:/logs
+      - neo4j-api-neo4j-import:/var/lib/neo4j/import
+      - neo4j-api-neo4j-plugins:/plugins
+
+  users-api:
+    image: ghcr.io/bo2kshelf/users-api:develop@sha256:959bb3fee62e9accd9d348d6269cef1efab50bde0402136961232481c7bb7a6b
+    depends_on:
+      users-api-mysql:
+        condition: service_healthy
+    networks:
+      - api
+      - users-api
+      - imageproxy
+    ports:
+      - published: ${USERS_API_PORT}
+        target: 4000
+    environment:
+      PORT: 4000
+      IMAGEPROXY_BASE_URL: http://${IMAGEPROXY_HOST}
+      JWT_SECRET: $USERS_API_JWT_SECRET
+      PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
+
+  users-api-mysql:
+    image: mysql:8.0
+    networks:
+      - users-api
+    environment:
+      MYSQL_ROOT_PASSWORD: $USERS_API_MYSQL_ROOT_PASSWORD
+      MYSQL_DATABASE: $USERS_API_MYSQL_DATABASE
+    volumes:
+      - users-api-mysql-data:/var/lib/mysql
+    healthcheck: &mysql-healthcheck
+      test: "mysqladmin ping -h localhost"
+      interval: 10s
+      timeout: 20s
+      retries: 10
+
+  search-api:
+    image: ghcr.io/bo2kshelf/search-api:develop
+    depends_on:
+      search-api-elasticsearch:
+        condition: service_healthy
+    networks:
+      - api
+      - search-api
+    ports:
+      - published: ${SEARCH_API_PORT}
+        target: 4000
+    environment:
+      ELASTICSEARCH_NODE_URI: http://search-elasticsearch:9200
+      ELASTICSEARCH_BOOKS_INDEX: books
+      ELASTICSEARCH_AUTHORS_INDEX: authors
+      ELASTICSEARCH_SERIES_INDEX: series
+
+  search-api-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3
+    networks:
+      - search-api
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - search-api-elasticsearch:/usr/share/elasticsearch/data
+    healthcheck: &elasicsearch-healthcheck
+      test: "curl --fail http://localhost:9200 || exit 1"
+      interval: 2s
+      timeout: 60s
+      retries: 300
+
+  auth-server:
+    image: ghcr.io/bo2kshelf/auth-server:develop@sha256:64f07fe3863d40d5866e31fde0a3a21cb543f447b582499d3d49bc0ebf0ebda7
+    depends_on:
+      auth-server-mongo:
+        condition: service_healthy
+      auth-server-postgresql:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      USER_API_ENDPOINT: http://users-api:4000
+      JWT_SECRET: ${AUTH_SERVER_JWT_SECRET}
+      SESSION_SECRET: ${AUTH_SERVER_SESSION_SECRET}
+      SESSION_MONGO_URI: mongodb://${AUTH_SERVER_MONGO_USERNAME}:${AUTH_SERVER_MONGO_PASSWORD}@auth-server-mongo:27017/${AUTH_SERVER_MONGO_DATABASE}?authSource=admin
+      PRISMA_DATABASE_URL: postgresql://root:${AUTH_SERVER_POSTGRES_PASSWORD}@auth-server-postgresql:5432/${AUTH_SERVER_POSTGRES_DATABASE}
+    ports:
+      - published: ${AUTH_SERVER_PORT}
+        target: 4000
+    networks:
+      - auth-server
+      - users-api
+
+  auth-server-mongo:
+    image: mongo:4.4
+    healthcheck: &mongo-healthcheck
+      test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
+      interval: 2s
+      start_period: 30s
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${AUTH_SERVER_MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${AUTH_SERVER_MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${AUTH_SERVER_MONGO_DATABASE}
+    networks:
+      - auth-server
+    volumes:
+      - auth-server-mongo-data:/data/db
+
+  auth-server-postgresql:
+    image: postgres:13.2
+    healthcheck: &postgresql-healthcheck
+      test: ["CMD", "pg_isready"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - auth-server
+    ports:
+      - published: 5432
+        target: 5432
+    environment:
+      POSTGRES_PASSWORD: ${AUTH_SERVER_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AUTH_SERVER_POSTGRES_DATABASE}
+    volumes:
+      - auth-server-postgresql-data:/var/lib/postgresql/data
+
+volumes:
+  imageproxy-redis-data:
+  users-api-mysql-data:
+  bookcover-api-redis-data:
+  neo4j-api-neo4j-data:
+  neo4j-api-neo4j-logs:
+  neo4j-api-neo4j-import:
+  neo4j-api-neo4j-plugins:
+  search-api-elasticsearch:
+  auth-server-mongo-data:
+  auth-server-postgresql-data:
+
+networks:
+  imageproxy:
+    driver: bridge
+
+  auth-server:
+    driver: bridge
+
+  api:
+    driver: bridge
+
+  users-api:
+    driver: bridge
+
+  neo4j-api:
+    driver: bridge
+
+  bookcover-api:
+    driver: bridge
+
+  search-api:
+    driver: bridge
