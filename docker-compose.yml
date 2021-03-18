@@ -100,6 +100,11 @@ services:
     image: neo4j:4.2@sha256:7ac9387fd60c7fc2f2b983567dd838e181de40fb99c8c6aec6147b6699012dfb
     networks:
       - neo4j-api
+    ports:
+      - published: $NEO4J_API_NEO4J_HTTP_PORT
+        target: 7474
+      - published: $NEO4J_API_NEO4J_BOLT_PORT
+        target: 7687
     healthcheck: &neo4j-healthcheck
       test: wget http://localhost:7474/browser -O-
       interval: 5s
@@ -139,6 +144,9 @@ services:
     image: mysql:8.0@sha256:af74f3efcbc567ed068184b5edf51392dbe8658be1b97f515ec9499f90630649
     networks:
       - users-api
+    ports:
+      - published: $USERS_API_MYSQL_PORT
+        target: 3306
     environment:
       MYSQL_ROOT_PASSWORD: $USERS_API_MYSQL_ROOT_PASSWORD
       MYSQL_DATABASE: $USERS_API_MYSQL_DATABASE
@@ -199,7 +207,7 @@ services:
       JWT_SECRET: ${AUTH_SERVER_JWT_SECRET}
       SESSION_SECRET: ${AUTH_SERVER_SESSION_SECRET}
       SESSION_MONGO_URI: mongodb://${AUTH_SERVER_MONGO_USERNAME}:${AUTH_SERVER_MONGO_PASSWORD}@auth-server-mongo:27017/${AUTH_SERVER_MONGO_DATABASE}?authSource=admin
-      PRISMA_DATABASE_URL: postgresql://root:${AUTH_SERVER_POSTGRES_PASSWORD}@auth-server-postgresql:5432/${AUTH_SERVER_POSTGRES_DATABASE}
+      PRISMA_DATABASE_URL: postgresql://${AUTH_SERVER_POSTGRES_USERNAME}:${AUTH_SERVER_POSTGRES_PASSWORD}@auth-server-postgresql:5432/${AUTH_SERVER_POSTGRES_DATABASE}
     ports:
       - published: ${AUTH_SERVER_PORT}
         target: 4000
@@ -213,6 +221,9 @@ services:
       test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
       interval: 2s
       start_period: 30s
+    ports:
+      - published: $AUTH_SERVER_MONGO_PORT
+        target: 27017
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${AUTH_SERVER_MONGO_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${AUTH_SERVER_MONGO_PASSWORD}
@@ -232,13 +243,26 @@ services:
     networks:
       - auth-server
     ports:
-      - published: 5432
+      - published: $AUTH_SERVER_POSTGRES_PORT
         target: 5432
     environment:
+      POSTGRES_USER: ${AUTH_SERVER_POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${AUTH_SERVER_POSTGRES_PASSWORD}
       POSTGRES_DB: ${AUTH_SERVER_POSTGRES_DATABASE}
     volumes:
       - auth-server-postgresql-data:/var/lib/postgresql/data
+
+  # for development tools
+  adminer:
+    image: adminer:standalone
+    networks:
+      - auth-server
+      - users-api
+    ports:
+      - published: $ADMINER_PORT
+        target: 8080
+    environment:
+      ADMINER_DESIGN: $ADMINER_DESIGN
 
 volumes:
   imageproxy-redis-data:
