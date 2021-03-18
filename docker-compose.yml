@@ -252,6 +252,16 @@ services:
     volumes:
       - auth-server-postgresql-data:/var/lib/postgresql/data
 
+  # for development tools
+  adminer:
+    image: adminer:standalone
+    networks:
+      - auth-server
+      - users-api
+    ports:
+      - published: $ADMINER_PORT
+        target: 8080
+
 volumes:
   imageproxy-redis-data:
   users-api-mysql-data:
