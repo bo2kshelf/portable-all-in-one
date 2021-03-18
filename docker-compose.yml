@@ -254,7 +254,7 @@ services:
 
   # for development tools
   adminer:
-    image: adminer:standalone
+    image: adminer:standalone@sha256:1ee6ed00d1169a14a1030a1d44a5ab1724392c115d296d98f0a0e8700628deeb
     networks:
       - auth-server
       - users-api
