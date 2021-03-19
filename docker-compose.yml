@@ -30,7 +30,7 @@ services:
 
   api-gateway:
     restart: always
-    image: ghcr.io/bo2kshelf/api-gateway:develop@sha256:d3dba208b6c8c47f3814b16f44697c830e6aacd63490b1a0d77d3e24da07c58e
+    image: ghcr.io/bo2kshelf/api-gateway:develop@sha256:bb5c602f8c0e2689fe807f50ec072c256d6b1942d5b5b2f9d23a073719c8a9b1
     networks:
       - api
     ports:
