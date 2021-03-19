@@ -131,7 +131,7 @@ services:
 
   users-api:
     restart: always
-    image: ghcr.io/bo2kshelf/users-api:develop@sha256:f3be3a99a7fa0415650ef4c3c415c9843763098682de95db6a5c16c968deec4b
+    image: ghcr.io/bo2kshelf/users-api:develop@sha256:d38de0cf4ddfea63a9529212cb4e273fecd6cf8fcef75689f950007e4430460c
     depends_on:
       users-api-mysql:
         condition: service_healthy
@@ -207,7 +207,7 @@ services:
 
   auth-server:
     restart: always
-    image: ghcr.io/bo2kshelf/auth-server:develop@sha256:299762b28c6d6d75ee787aff196100492508eee35e89d660c75511f79a82c072
+    image: ghcr.io/bo2kshelf/auth-server:develop@sha256:93801e6594ee27713677aae90677910510e5f6ed60f169e659897bfe1204a969
     depends_on:
       auth-server-mongo:
         condition: service_healthy
