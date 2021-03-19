@@ -2,6 +2,7 @@ version: "3.7"
 
 services:
   imageproxy:
+    restart: always
     image: willnorris/imageproxy@sha256:7e4c77d1b64db9152591dbfd8565d5d377eb8a243040efa4e241b97ba94feb1d
     networks:
       - imageproxy
@@ -15,6 +16,7 @@ services:
       IMAGEPROXY_CACHE: redis://imageproxy-redis:6379
 
   imageproxy-redis:
+    restart: always
     image: redis:6@sha256:e97d506be34a39fa69f45eea846080d6985c2c9ee338c0d408c7ea4347f014a5
     healthcheck: &redis-healthcheck
       test: ["CMD", "redis-cli", "ping"]
@@ -27,6 +29,7 @@ services:
       - imageproxy-redis-data:/data
 
   api-gateway:
+    restart: always
     image: ghcr.io/bo2kshelf/api-gateway:develop@sha256:d3dba208b6c8c47f3814b16f44697c830e6aacd63490b1a0d77d3e24da07c58e
     networks:
       - api
@@ -52,6 +55,7 @@ services:
       USER_API_ENDPOINT: http://users-api:4000
 
   bookcover-api:
+    restart: always
     image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:d557ec434e2e91a7f0d34ec800402337d2d4ecaed03b49c4c898343e7338c795
     networks:
       - api
@@ -72,6 +76,7 @@ services:
       REDIS_PORT: 6379
 
   bookcover-api-redis:
+    restart: always
     image: redis:6@sha256:e97d506be34a39fa69f45eea846080d6985c2c9ee338c0d408c7ea4347f014a5
     healthcheck: *redis-healthcheck
     networks:
@@ -80,6 +85,7 @@ services:
       - bookcover-api-redis-data:/data
 
   neo4j-api:
+    restart: always
     image: ghcr.io/bo2kshelf/neo4j-api:develop@sha256:15ecf203d23c9edca043bf695f46572a6e0634c28ac7b92b6f3ecbaec966439e
     depends_on:
       neo4j-api-neo4j:
@@ -97,6 +103,7 @@ services:
       NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
 
   neo4j-api-neo4j:
+    restart: always
     image: neo4j:4.2@sha256:7ac9387fd60c7fc2f2b983567dd838e181de40fb99c8c6aec6147b6699012dfb
     networks:
       - neo4j-api
@@ -123,6 +130,7 @@ services:
       - neo4j-api-neo4j-plugins:/plugins
 
   users-api:
+    restart: always
     image: ghcr.io/bo2kshelf/users-api:develop@sha256:959bb3fee62e9accd9d348d6269cef1efab50bde0402136961232481c7bb7a6b
     depends_on:
       users-api-mysql:
@@ -141,6 +149,7 @@ services:
       PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
 
   users-api-mysql:
+    restart: always
     image: mysql:8.0@sha256:af74f3efcbc567ed068184b5edf51392dbe8658be1b97f515ec9499f90630649
     networks:
       - users-api
@@ -159,6 +168,7 @@ services:
       retries: 10
 
   search-api:
+    restart: always
     image: ghcr.io/bo2kshelf/search-api:develop@sha256:340697cf79efb99c971bb438ae1bfcc79f6e3f120c780a7e4fcb016095a401b5
     depends_on:
       search-api-elasticsearch:
@@ -176,6 +186,7 @@ services:
       ELASTICSEARCH_SERIES_INDEX: series
 
   search-api-elasticsearch:
+    restart: always
     image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3@sha256:580ab57fdd7de1ce108b4c4b872bf51a16048b1061b4a7dc68249971ec961164
     networks:
       - search-api
@@ -195,6 +206,7 @@ services:
       retries: 300
 
   auth-server:
+    restart: always
     image: ghcr.io/bo2kshelf/auth-server:develop@sha256:64f07fe3863d40d5866e31fde0a3a21cb543f447b582499d3d49bc0ebf0ebda7
     depends_on:
       auth-server-mongo:
@@ -216,6 +228,7 @@ services:
       - users-api
 
   auth-server-mongo:
+    restart: always
     image: mongo:4.4@sha256:845fd775d7a58f564fae7c17a4eec7ff038e1c4004ebe05cc1cb5fc3767cf6cc
     healthcheck: &mongo-healthcheck
       test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
@@ -234,6 +247,7 @@ services:
       - auth-server-mongo-data:/data/db
 
   auth-server-postgresql:
+    restart: always
     image: postgres:13.2@sha256:c83014a2b46834ef6d17f64c8e4a70089901a8c0dee158f1ca5ccae032ea32e5
     healthcheck: &postgresql-healthcheck
       test: ["CMD", "pg_isready"]
@@ -254,6 +268,7 @@ services:
 
   # for development tools
   adminer:
+    restart: always
     image: adminer:standalone@sha256:1ee6ed00d1169a14a1030a1d44a5ab1724392c115d296d98f0a0e8700628deeb
     networks:
       - auth-server
