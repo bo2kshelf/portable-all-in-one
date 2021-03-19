@@ -187,7 +187,7 @@ services:
 
   search-api-elasticsearch:
     restart: always
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3@sha256:580ab57fdd7de1ce108b4c4b872bf51a16048b1061b4a7dc68249971ec961164
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2@sha256:2c257b68f361872e13bdd476cba152e232a314ec61b0eedfc1f71b628ba39432
     networks:
       - search-api
     environment:
