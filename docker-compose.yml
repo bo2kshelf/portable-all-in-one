@@ -131,7 +131,7 @@ services:
 
   users-api:
     restart: always
-    image: ghcr.io/bo2kshelf/users-api:develop@sha256:959bb3fee62e9accd9d348d6269cef1efab50bde0402136961232481c7bb7a6b
+    image: ghcr.io/bo2kshelf/users-api:develop@sha256:f3be3a99a7fa0415650ef4c3c415c9843763098682de95db6a5c16c968deec4b
     depends_on:
       users-api-mysql:
         condition: service_healthy
