@@ -150,7 +150,7 @@ services:
 
   users-api-mysql:
     restart: always
-    image: mysql:8.0@sha256:af74f3efcbc567ed068184b5edf51392dbe8658be1b97f515ec9499f90630649
+    image: mysql:8.0@sha256:00b627abbd6e91d5d0e4be786869930497b9759bf40db3f15408bb894daf5263
     networks:
       - users-api
     ports:
