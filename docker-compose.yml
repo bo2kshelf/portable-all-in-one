@@ -104,7 +104,7 @@ services:
 
   neo4j-api-neo4j:
     restart: always
-    image: neo4j:4.2@sha256:7ac9387fd60c7fc2f2b983567dd838e181de40fb99c8c6aec6147b6699012dfb
+    image: neo4j:4.2@sha256:732105228bb4baefe77361def4cd4709c31061abc98387bf9d09730447cd8ece
     networks:
       - neo4j-api
     ports:
