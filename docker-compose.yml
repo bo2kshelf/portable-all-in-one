@@ -17,7 +17,7 @@ services:
 
   imageproxy-redis:
     restart: always
-    image: redis:6@sha256:e97d506be34a39fa69f45eea846080d6985c2c9ee338c0d408c7ea4347f014a5
+    image: redis:6@sha256:2d17fb90c268b1c7799234216c875490a35fe8fa13fbc5495b7247d93e77255e
     healthcheck: &redis-healthcheck
       test: ["CMD", "redis-cli", "ping"]
       interval: 1s
@@ -77,7 +77,7 @@ services:
 
   bookcover-api-redis:
     restart: always
-    image: redis:6@sha256:e97d506be34a39fa69f45eea846080d6985c2c9ee338c0d408c7ea4347f014a5
+    image: redis:6@sha256:2d17fb90c268b1c7799234216c875490a35fe8fa13fbc5495b7247d93e77255e
     healthcheck: *redis-healthcheck
     networks:
       - bookcover-api
