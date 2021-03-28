@@ -248,7 +248,7 @@ services:
 
   auth-server-postgresql:
     restart: always
-    image: postgres:13.2@sha256:c83014a2b46834ef6d17f64c8e4a70089901a8c0dee158f1ca5ccae032ea32e5
+    image: postgres:13.2@sha256:7d3e318f67bac6b24f5c7d988cac61926fb86798135f2ac59c5483151e837ef2
     healthcheck: &postgresql-healthcheck
       test: ["CMD", "pg_isready"]
       interval: 1s
