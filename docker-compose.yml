@@ -86,7 +86,7 @@ services:
 
   neo4j-api:
     restart: always
-    image: ghcr.io/bo2kshelf/neo4j-api:develop@sha256:ea2778f9889f4f25b090ac698e4f4c25b27fc8ea6b2d8cc155ace7929ef1944d
+    image: ghcr.io/bo2kshelf/neo4j-api:develop@sha256:09977639563827815f059b8f1b936e1b809a975f848917a698f1d4dcfc9e94a7
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
