@@ -1,4 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>bo2kshelf/renovate-config", "schedule:weakly"]
+  "extends": ["local>bo2kshelf/renovate-config", "schedule:weekly"]
 }
