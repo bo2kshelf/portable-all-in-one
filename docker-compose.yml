@@ -207,7 +207,7 @@ services:
 
   auth-server:
     restart: always
-    image: ghcr.io/bo2kshelf/auth-server:develop@sha256:93801e6594ee27713677aae90677910510e5f6ed60f169e659897bfe1204a969
+    image: ghcr.io/bo2kshelf/auth-server:develop@sha256:f1406eefecab1ddc917f0e31ad8e109fbd61de31102bfea5839771f73b0bb3d1
     depends_on:
       auth-server-mongo:
         condition: service_healthy
