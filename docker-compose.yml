@@ -215,6 +215,7 @@ services:
         condition: service_healthy
     environment:
       PORT: 4000
+      SESSION_NAME: ${AUTH_SERVER_SESSION_NAME}
       USER_API_ENDPOINT: http://users-api:4000
       JWT_SECRET: ${AUTH_SERVER_JWT_SECRET}
       SESSION_SECRET: ${AUTH_SERVER_SESSION_SECRET}
