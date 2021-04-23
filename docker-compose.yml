@@ -107,6 +107,7 @@ services:
     image: neo4j:4.2@sha256:732105228bb4baefe77361def4cd4709c31061abc98387bf9d09730447cd8ece
     networks:
       - neo4j-api
+      - readonly-neo4j
     ports:
       - published: $NEO4J_API_NEO4J_HTTP_PORT
         target: 7474
@@ -153,6 +154,7 @@ services:
     image: mysql:8.0@sha256:00b627abbd6e91d5d0e4be786869930497b9759bf40db3f15408bb894daf5263
     networks:
       - users-api
+      - readonly-users
     ports:
       - published: $USERS_API_MYSQL_PORT
         target: 3306
@@ -280,10 +282,108 @@ services:
     environment:
       ADMINER_DESIGN: $ADMINER_DESIGN
 
+  # public-api
+  public-api-gateway:
+    restart: always
+    image: ghcr.io/bo2kshelf/public-api-gateway:develop
+    depends_on:
+      bookcover-service:
+        condition: service_started
+      read-users-service:
+        condition: service_started
+      read-contents-service:
+        condition: service_started
+      read-records-service:
+        condition: service_started
+    networks:
+      - public-api
+    ports:
+      - published: ${PUBLIC_API_PORT}
+        target: 4000
+    environment:
+      PORT: 4000
+      BOOKCOVER_SERVICE_URL: http://bookcover-service:4000/graphql
+      READ_USERS_SERVICE_URL: http://read-users-service:4000/graphql
+      READ_CONTENTS_SERVICE_URL: http://read-contents-service:4000/graphql
+      READ_RECORDS_SERVICE_URL: http://read-records-service:4000/graphql
+
+  read-users-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/read-users-service:develop
+    depends_on:
+      users-api-mysql:
+        condition: service_healthy
+    networks:
+      - public-api
+      - imageproxy
+      - readonly-users
+    environment:
+      PORT: 4000
+      PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+
+  read-contents-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/read-contents-service:develop
+    depends_on:
+      neo4j-api-neo4j:
+        condition: service_healthy
+    networks:
+      - public-api
+      - readonly-neo4j
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://neo4j-api-neo4j:7687
+      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+
+  read-records-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/read-records-service:develop
+    depends_on:
+      neo4j-api-neo4j:
+        condition: service_healthy
+    networks:
+      - public-api
+      - readonly-neo4j
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://neo4j-api-neo4j:7687
+      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+
+  bookcover-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:8e4bfab9924f631a92490fd2c3d9722ee255bc217771311674a081de73d69550
+    networks:
+      - public-api
+      - bookcover
+      - imageproxy
+    depends_on:
+      bookcover-service-redis:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
+      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+      REDIS_HOST: bookcover-service-redis
+      REDIS_PORT: 6379
+
+  bookcover-service-redis:
+    restart: always
+    image: redis:6@sha256:2d17fb90c268b1c7799234216c875490a35fe8fa13fbc5495b7247d93e77255e
+    healthcheck: *redis-healthcheck
+    networks:
+      - bookcover
+    volumes:
+      - bookcover-service-redis-data:/data
+
 volumes:
   imageproxy-redis-data:
   users-api-mysql-data:
   bookcover-api-redis-data:
+  bookcover-service-redis-data:
   neo4j-api-neo4j-data:
   neo4j-api-neo4j-logs:
   neo4j-api-neo4j-import:
@@ -293,6 +393,18 @@ volumes:
   auth-server-postgresql-data:
 
 networks:
+  public-api:
+    driver: bridge
+
+  bookcover:
+    driver: bridge
+
+  readonly-neo4j:
+    driver: bridge
+
+  readonly-users:
+    driver: bridge
+
   imageproxy:
     driver: bridge
 
