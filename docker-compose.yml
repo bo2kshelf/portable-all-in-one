@@ -108,6 +108,7 @@ services:
     networks:
       - neo4j-api
       - readonly-neo4j
+      - writable-neo4j
     ports:
       - published: $NEO4J_API_NEO4J_HTTP_PORT
         target: 7474
@@ -154,7 +155,8 @@ services:
     image: mysql:8.0@sha256:00b627abbd6e91d5d0e4be786869930497b9759bf40db3f15408bb894daf5263
     networks:
       - users-api
-      - readonly-users
+      - readonly-users-db
+      - writable-users-db
     ports:
       - published: $USERS_API_MYSQL_PORT
         target: 3306
@@ -296,7 +298,10 @@ services:
       read-records-service:
         condition: service_started
     networks:
-      - public-api
+      - bookcover
+      - read-users
+      - read-contents
+      - read-records
     ports:
       - published: ${PUBLIC_API_PORT}
         target: 4000
@@ -314,9 +319,9 @@ services:
       users-api-mysql:
         condition: service_healthy
     networks:
-      - public-api
       - imageproxy
-      - readonly-users
+      - read-users
+      - readonly-users-db
     environment:
       PORT: 4000
       PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
@@ -329,7 +334,7 @@ services:
       neo4j-api-neo4j:
         condition: service_healthy
     networks:
-      - public-api
+      - read-contents
       - readonly-neo4j
     environment:
       PORT: 4000
@@ -339,12 +344,12 @@ services:
 
   read-records-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-records-service:develop
+    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:03966ab97aed41d226793ed863781741d83c5cc1e1d1dfcb52b847b2e9b100cc
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
     networks:
-      - public-api
+      - read-records
       - readonly-neo4j
     environment:
       PORT: 4000
@@ -356,7 +361,6 @@ services:
     restart: always
     image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:8e4bfab9924f631a92490fd2c3d9722ee255bc217771311674a081de73d69550
     networks:
-      - public-api
       - bookcover
       - imageproxy
     depends_on:
@@ -379,6 +383,47 @@ services:
     volumes:
       - bookcover-service-redis-data:/data
 
+  # management
+  management-api-gateway:
+    restart: always
+    image: ghcr.io/bo2kshelf/management-api-gateway:develop@sha256:dabb3121952b1e90ba0913e94a8c85dd77947e0acb86bc2164a8e7510766d6fd
+    depends_on:
+      bookcover-service:
+        condition: service_started
+      read-users-service:
+        condition: service_started
+      read-contents-service:
+        condition: service_started
+      read-records-service:
+        condition: service_started
+    networks:
+      - bookcover
+      - read-contents
+      - edit-contents
+    ports:
+      - published: ${MANAGEMENT_API_PORT}
+        target: 4000
+    environment:
+      PORT: 4000
+      BOOKCOVER_SERVICE_URL: http://bookcover-service:4000/graphql
+      READ_CONTENTS_SERVICE_URL: http://read-contents-service:4000/graphql
+      EDIT_CONTENTS_SERVICE_URL: http://edit-contents-service:4000/graphql
+
+  edit-contents-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
+    depends_on:
+      neo4j-api-neo4j:
+        condition: service_healthy
+    networks:
+      - edit-contents
+      - writable-neo4j
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://neo4j-api-neo4j:7687
+      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+
 volumes:
   imageproxy-redis-data:
   users-api-mysql-data:
@@ -393,7 +438,7 @@ volumes:
   auth-server-postgresql-data:
 
 networks:
-  public-api:
+  imageproxy:
     driver: bridge
 
   bookcover:
@@ -402,10 +447,25 @@ networks:
   readonly-neo4j:
     driver: bridge
 
-  readonly-users:
+  writable-neo4j:
     driver: bridge
 
-  imageproxy:
+  readonly-users-db:
+    driver: bridge
+
+  writable-users-db:
+    driver: bridge
+
+  read-users:
+    driver: bridge
+
+  read-contents:
+    driver: bridge
+
+  read-records:
+    driver: bridge
+
+  edit-contents:
     driver: bridge
 
   auth-server:
