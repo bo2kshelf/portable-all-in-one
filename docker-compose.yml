@@ -344,7 +344,7 @@ services:
 
   read-records-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:03966ab97aed41d226793ed863781741d83c5cc1e1d1dfcb52b847b2e9b100cc
+    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:89005400d14152f76c4f00d8c32603f8257cf2d3a47c0f7d9ab859c23858aa57
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
