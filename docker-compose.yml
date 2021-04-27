@@ -173,7 +173,7 @@ services:
 
   search-api:
     restart: always
-    image: ghcr.io/bo2kshelf/search-api:develop@sha256:340697cf79efb99c971bb438ae1bfcc79f6e3f120c780a7e4fcb016095a401b5
+    image: ghcr.io/bo2kshelf/search-api:develop@sha256:65db98c6bf606e5b1d308f398756c8ea74bf9a2fa63a2a951986ccc9c72ee781
     depends_on:
       search-api-elasticsearch:
         condition: service_healthy
