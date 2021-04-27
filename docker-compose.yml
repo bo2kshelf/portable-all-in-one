@@ -274,7 +274,7 @@ services:
   # for development tools
   adminer:
     restart: always
-    image: adminer:standalone@sha256:1bf211fe728494901bba5461024fa8011182a97f8d5fbd121a19e58043e41e9e
+    image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
     networks:
       - auth-server
       - users-api
