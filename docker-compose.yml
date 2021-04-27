@@ -56,7 +56,7 @@ services:
 
   bookcover-api:
     restart: always
-    image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:8e4bfab9924f631a92490fd2c3d9722ee255bc217771311674a081de73d69550
+    image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:1e6529c0b42f13d5e78b94b2cbcc81b06d23a59c94052f4a3bd0a50eaeab52f6
     networks:
       - api
       - bookcover-api
