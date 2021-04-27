@@ -152,7 +152,7 @@ services:
 
   users-api-mysql:
     restart: always
-    image: mysql:8.0@sha256:00b627abbd6e91d5d0e4be786869930497b9759bf40db3f15408bb894daf5263
+    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
     networks:
       - users-api
       - readonly-users-db
