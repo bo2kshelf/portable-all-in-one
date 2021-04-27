@@ -234,7 +234,7 @@ services:
 
   auth-server-mongo:
     restart: always
-    image: mongo:4.4@sha256:75a5f624bd6d14254e0d84c2833f576109672750aaf2bf01d61cb5ead44f4505
+    image: mongo:4.4@sha256:64be89e169fc33f3fa140c2c548186be4acd972bd7174344505fc5630dcf707c
     healthcheck: &mongo-healthcheck
       test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
       interval: 2s
