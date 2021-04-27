@@ -287,7 +287,7 @@ services:
   # public-api
   public-api-gateway:
     restart: always
-    image: ghcr.io/bo2kshelf/public-api-gateway:develop
+    image: ghcr.io/bo2kshelf/public-api-gateway:develop@sha256:ea7e33f9a076a20ff7a0a434633729c35dcb7604162a87efabfd672bbe779559
     depends_on:
       bookcover-service:
         condition: service_started
@@ -314,7 +314,7 @@ services:
 
   read-users-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-users-service:develop
+    image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
     depends_on:
       users-api-mysql:
         condition: service_healthy
@@ -329,7 +329,7 @@ services:
 
   read-contents-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-contents-service:develop
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
