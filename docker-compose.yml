@@ -344,7 +344,7 @@ services:
 
   papi-read-records-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:89005400d14152f76c4f00d8c32603f8257cf2d3a47c0f7d9ab859c23858aa57
+    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:5f00a6f8af47c76663e9c14f70cfc08d6499ee65085befe0b33ca2cd8f0a270d
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
