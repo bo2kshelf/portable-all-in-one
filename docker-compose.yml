@@ -289,30 +289,30 @@ services:
     restart: always
     image: ghcr.io/bo2kshelf/public-api-gateway:develop@sha256:ea7e33f9a076a20ff7a0a434633729c35dcb7604162a87efabfd672bbe779559
     depends_on:
-      bookcover-service:
+      papi-bookcover-service:
         condition: service_started
-      read-users-service:
+      papi-read-users-service:
         condition: service_started
-      read-contents-service:
+      papi-read-contents-service:
         condition: service_started
-      read-records-service:
+      papi-read-records-service:
         condition: service_started
     networks:
-      - bookcover
-      - read-users
-      - read-contents
-      - read-records
+      - papi-read-users
+      - papi-read-contents
+      - papi-read-records
+      - papi-bookcover
     ports:
       - published: ${PUBLIC_API_PORT}
         target: 4000
     environment:
       PORT: 4000
-      BOOKCOVER_SERVICE_URL: http://bookcover-service:4000/graphql
-      READ_USERS_SERVICE_URL: http://read-users-service:4000/graphql
-      READ_CONTENTS_SERVICE_URL: http://read-contents-service:4000/graphql
-      READ_RECORDS_SERVICE_URL: http://read-records-service:4000/graphql
+      BOOKCOVER_SERVICE_URL: http://papi-bookcover-service:4000/graphql
+      READ_USERS_SERVICE_URL: http://papi-read-users-service:4000/graphql
+      READ_CONTENTS_SERVICE_URL: http://papi-read-contents-service:4000/graphql
+      READ_RECORDS_SERVICE_URL: http://papi-read-records-service:4000/graphql
 
-  read-users-service:
+  papi-read-users-service:
     restart: always
     image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
     depends_on:
@@ -320,115 +320,153 @@ services:
         condition: service_healthy
     networks:
       - imageproxy
-      - read-users
       - readonly-users-db
+      - papi-read-users
     environment:
       PORT: 4000
       PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
 
-  read-contents-service:
+  papi-read-contents-service:
     restart: always
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
     networks:
-      - read-contents
       - readonly-neo4j
+      - papi-read-contents
     environment:
       PORT: 4000
       NEO4J_URL: bolt://neo4j-api-neo4j:7687
       NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
 
-  read-records-service:
+  papi-read-records-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:89005400d14152f76c4f00d8c32603f8257cf2d3a47c0f7d9ab859c23858aa57
+    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:5f00a6f8af47c76663e9c14f70cfc08d6499ee65085befe0b33ca2cd8f0a270d
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
     networks:
-      - read-records
       - readonly-neo4j
+      - papi-read-records
     environment:
       PORT: 4000
       NEO4J_URL: bolt://neo4j-api-neo4j:7687
       NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
 
-  bookcover-service:
+  papi-bookcover-service:
     restart: always
     image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
     networks:
-      - bookcover
+      - papi-bookcover
       - imageproxy
     depends_on:
-      bookcover-service-redis:
+      papi-bookcover-service-redis:
         condition: service_healthy
     environment:
       PORT: 4000
       RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
       RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-      REDIS_HOST: bookcover-service-redis
+      REDIS_HOST: papi-bookcover-service-redis
       REDIS_PORT: 6379
 
-  bookcover-service-redis:
+  papi-bookcover-service-redis:
     restart: always
     image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
     healthcheck: *redis-healthcheck
     networks:
-      - bookcover
+      - papi-bookcover
     volumes:
-      - bookcover-service-redis-data:/data
+      - papi-bookcover-service-redis-data:/data
 
   # management
   management-api-gateway:
     restart: always
     image: ghcr.io/bo2kshelf/management-api-gateway:develop@sha256:dabb3121952b1e90ba0913e94a8c85dd77947e0acb86bc2164a8e7510766d6fd
     depends_on:
-      bookcover-service:
+      mapi-read-contents-service:
         condition: service_started
-      read-users-service:
+      mapi-edit-contents-service:
         condition: service_started
-      read-contents-service:
-        condition: service_started
-      read-records-service:
+      mapi-bookcover-service:
         condition: service_started
     networks:
-      - bookcover
-      - read-contents
-      - edit-contents
+      - mapi-read-contents
+      - mapi-edit-contents
+      - mapi-bookcover
     ports:
       - published: ${MANAGEMENT_API_PORT}
         target: 4000
     environment:
       PORT: 4000
-      BOOKCOVER_SERVICE_URL: http://bookcover-service:4000/graphql
-      READ_CONTENTS_SERVICE_URL: http://read-contents-service:4000/graphql
-      EDIT_CONTENTS_SERVICE_URL: http://edit-contents-service:4000/graphql
+      READ_CONTENTS_SERVICE_URL: http:/mapi-read-contents-service:4000/graphql
+      EDIT_CONTENTS_SERVICE_URL: http:/mapi-edit-contents-service:4000/graphql
+      BOOKCOVER_SERVICE_URL: http://mapi-bookcover-service:4000/graphql
 
-  edit-contents-service:
+  mapi-read-contents-service:
     restart: always
-    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
     networks:
-      - edit-contents
-      - writable-neo4j
+      - readonly-neo4j
+      - mapi-read-contents
     environment:
       PORT: 4000
       NEO4J_URL: bolt://neo4j-api-neo4j:7687
       NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
 
+  mapi-edit-contents-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
+    depends_on:
+      neo4j-api-neo4j:
+        condition: service_healthy
+    networks:
+      - writable-neo4j
+      - mapi-edit-contents
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://neo4j-api-neo4j:7687
+      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+
+  mapi-bookcover-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
+    networks:
+      - imageproxy
+      - mapi-bookcover
+    depends_on:
+      papi-bookcover-service-redis:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
+      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+      REDIS_HOST: mapi-bookcover-service-redis
+      REDIS_PORT: 6379
+
+  mapi-bookcover-service-redis:
+    restart: always
+    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
+    healthcheck: *redis-healthcheck
+    networks:
+      - mapi-bookcover
+    volumes:
+      - mapi-bookcover-service-redis-data:/data
+
 volumes:
   imageproxy-redis-data:
   users-api-mysql-data:
   bookcover-api-redis-data:
-  bookcover-service-redis-data:
   neo4j-api-neo4j-data:
   neo4j-api-neo4j-logs:
   neo4j-api-neo4j-import:
@@ -436,12 +474,13 @@ volumes:
   search-api-elasticsearch:
   auth-server-mongo-data:
   auth-server-postgresql-data:
+  # public
+  papi-bookcover-service-redis-data:
+  # management
+  mapi-bookcover-service-redis-data:
 
 networks:
   imageproxy:
-    driver: bridge
-
-  bookcover:
     driver: bridge
 
   readonly-neo4j:
@@ -454,18 +493,6 @@ networks:
     driver: bridge
 
   writable-users-db:
-    driver: bridge
-
-  read-users:
-    driver: bridge
-
-  read-contents:
-    driver: bridge
-
-  read-records:
-    driver: bridge
-
-  edit-contents:
     driver: bridge
 
   auth-server:
@@ -484,4 +511,22 @@ networks:
     driver: bridge
 
   search-api:
+    driver: bridge
+
+  # public
+  papi-read-users:
+    driver: bridge
+  papi-read-contents:
+    driver: bridge
+  papi-read-records:
+    driver: bridge
+  papi-bookcover:
+    driver: bridge
+
+  # management
+  mapi-read-contents:
+    driver: bridge
+  mapi-edit-contents:
+    driver: bridge
+  mapi-bookcover:
     driver: bridge
