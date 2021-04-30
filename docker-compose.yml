@@ -403,8 +403,8 @@ services:
         target: 4000
     environment:
       PORT: 4000
-      READ_CONTENTS_SERVICE_URL: http:/mapi-read-contents-service:4000/graphql
-      EDIT_CONTENTS_SERVICE_URL: http:/mapi-edit-contents-service:4000/graphql
+      READ_CONTENTS_SERVICE_URL: http://mapi-read-contents-service:4000/graphql
+      EDIT_CONTENTS_SERVICE_URL: http://mapi-edit-contents-service:4000/graphql
       BOOKCOVER_SERVICE_URL: http://mapi-bookcover-service:4000/graphql
 
   mapi-read-contents-service:
