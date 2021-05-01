@@ -1,6 +1,70 @@
 version: "3.7"
 
+x-redis-healthcheck: &redis-healthcheck
+  test: ["CMD", "redis-cli", "ping"]
+  interval: 1s
+  timeout: 3s
+  retries: 30
+
+x-neo4j-healthcheck: &neo4j-healthcheck
+  test: wget http://localhost:7474/browser -O-
+  interval: 10s
+  timeout: 3s
+  retries: 50
+
+x-neo4j-common-env: &neo4j-common-env
+  NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+  NEO4JLABS_PLUGINS: '["apoc"]'
+  NEO4J_apoc_export_file_enabled: "true"
+  NEO4J_apoc_import_file_enabled: "true"
+  NEO4J_apoc_import_file_use__neo4j__config: "true"
+  NEO4J_dbms_memory_pagecache_size: "100M"
+  NEO4J_dbms_memory_heap_initial__size: "100M"
+  NEO4J_causal__clustering_initial__discovery__members: neo4j-secondaly-core-1:5000,neo4j-secondaly-core-2:5000,mapi-edit-contents-neo4j-core:5000
+
+x-neo4j-core-env: &neo4j-core-env
+  <<: *neo4j-common-env
+  NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+  NEO4J_dbms_mode: CORE
+  NEO4J_causal__clustering_expected__core__cluster__size: 3
+
+x-neo4j-replica-env: &neo4j-replica-env
+  <<: *neo4j-common-env
+  NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+  NEO4J_dbms_mode: READ_REPLICA
+
 services:
+  # neo4j
+  neo4j-secondaly-core-1:
+    image: neo4j:4.2-enterprise
+    networks:
+      - neo4j-cluster
+    healthcheck:
+      <<: *neo4j-healthcheck
+    environment:
+      <<: *neo4j-core-env
+      NEO4J_causal__clustering_discovery__advertised__address: neo4j-secondaly-core-1:5000
+    volumes:
+      - neo4j-secondaly-core-1-data:/data
+      - neo4j-secondaly-core-1-logs:/logs
+      - neo4j-secondaly-core-1-import:/var/lib/neo4j/import
+      - neo4j-secondaly-core-1-plugins:/plugins
+
+  neo4j-secondaly-core-2:
+    image: neo4j:4.2-enterprise
+    networks:
+      - neo4j-cluster
+    healthcheck:
+      <<: *neo4j-healthcheck
+    environment:
+      <<: *neo4j-core-env
+      NEO4J_causal__clustering_discovery__advertised__address: neo4j-secondaly-core-2:5000
+    volumes:
+      - neo4j-secondaly-core-2-data:/data
+      - neo4j-secondaly-core-2-logs:/logs
+      - neo4j-secondaly-core-2-import:/var/lib/neo4j/import
+      - neo4j-secondaly-core-2-plugins:/plugins
+
   # imageproxy
   imageproxy:
     restart: always
@@ -19,11 +83,8 @@ services:
   imageproxy-redis:
     restart: always
     image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
-    healthcheck: &redis-healthcheck
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
+    healthcheck:
+      <<: *redis-healthcheck
     networks:
       - imageproxy
     volumes:
@@ -40,6 +101,111 @@ services:
         target: 8080
     environment:
       ADMINER_DESIGN: $ADMINER_DESIGN
+
+  # management
+  management-api-gateway:
+    restart: always
+    image: ghcr.io/bo2kshelf/management-api-gateway:develop@sha256:dabb3121952b1e90ba0913e94a8c85dd77947e0acb86bc2164a8e7510766d6fd
+    depends_on:
+      mapi-read-contents-service:
+        condition: service_started
+      mapi-edit-contents-service:
+        condition: service_started
+      mapi-bookcover-service:
+        condition: service_started
+    networks:
+      - mapi-read-contents
+      - mapi-edit-contents
+      - mapi-bookcover
+    ports:
+      - published: ${MANAGEMENT_API_PORT}
+        target: 4000
+    environment:
+      PORT: 4000
+      READ_CONTENTS_SERVICE_URL: http://mapi-read-contents-service:4000/graphql
+      EDIT_CONTENTS_SERVICE_URL: http://mapi-edit-contents-service:4000/graphql
+      BOOKCOVER_SERVICE_URL: http://mapi-bookcover-service:4000/graphql
+
+  mapi-read-contents-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
+    depends_on:
+      mapi-read-contents-neo4j-replica:
+        condition: service_healthy
+    networks:
+      - mapi-read-contents
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://mapi-read-contents-neo4j-replica:7687
+      NEO4J_USERNAME: ${NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+
+  mapi-read-contents-neo4j-replica:
+    image: neo4j:4.2-enterprise
+    networks:
+      - neo4j-cluster
+      - mapi-read-contents
+    healthcheck:
+      <<: *neo4j-healthcheck
+    environment:
+      <<: *neo4j-replica-env
+      NEO4J_causal__clustering_discovery__advertised__address: mapi-read-contents-neo4j-replica:5000
+
+  mapi-edit-contents-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
+    depends_on:
+      mapi-edit-contents-neo4j-core:
+        condition: service_healthy
+    networks:
+      - mapi-edit-contents
+    environment:
+      PORT: 4000
+      NEO4J_URL: bolt://mapi-edit-contents-neo4j-core:7687
+      NEO4J_USERNAME: ${NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+
+  mapi-edit-contents-neo4j-core:
+    image: neo4j:4.2-enterprise
+    networks:
+      - neo4j-cluster
+      - mapi-edit-contents
+    healthcheck:
+      <<: *neo4j-healthcheck
+    environment:
+      <<: *neo4j-core-env
+      NEO4J_causal__clustering_discovery__advertised__address: mapi-edit-contents-neo4j-core:5000
+    volumes:
+      - mapi-edit-contents-neo4j-core-data:/data
+      - mapi-edit-contents-neo4j-core-logs:/logs
+      - mapi-edit-contents-neo4j-core-import:/var/lib/neo4j/import
+      - mapi-edit-contents-neo4j-core-plugins:/plugins
+
+  mapi-bookcover-service:
+    restart: always
+    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
+    networks:
+      - imageproxy
+      - mapi-bookcover
+    depends_on:
+      papi-bookcover-service-redis:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
+      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+      REDIS_HOST: mapi-bookcover-service-redis
+      REDIS_PORT: 6379
+
+  mapi-bookcover-service-redis:
+    restart: always
+    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
+    healthcheck: *redis-healthcheck
+    networks:
+      - mapi-bookcover
+    volumes:
+      - mapi-bookcover-service-redis-data:/data
 
   # public-api
   public-api-gateway:
@@ -104,53 +270,54 @@ services:
     restart: always
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
     depends_on:
-      papi-neo4j:
+      papi-read-contents-neo4j-replica:
         condition: service_healthy
     networks:
-      - papi-neo4j
       - papi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://papi-neo4j:7687
-      NEO4J_USERNAME: ${PAPI_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${PAPI_NEO4J_PASSWORD}
+      NEO4J_URL: bolt://papi-read-contents-neo4j-replica:7687
+      NEO4J_USERNAME: ${NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+
+  papi-read-contents-neo4j-replica:
+    image: neo4j:4.2-enterprise
+    networks:
+      - neo4j-cluster
+      - papi-read-contents
+    ports:
+      - 7474:7474
+      - 7687:7687
+    healthcheck:
+      <<: *neo4j-healthcheck
+    environment:
+      <<: *neo4j-replica-env
+      NEO4J_causal__clustering_discovery__advertised__address: papi-read-contents-neo4j-replica:5000
 
   papi-read-records-service:
     restart: always
     image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:5f00a6f8af47c76663e9c14f70cfc08d6499ee65085befe0b33ca2cd8f0a270d
     depends_on:
-      papi-neo4j:
+      papi-read-records-neo4j-replica:
         condition: service_healthy
     networks:
-      - papi-neo4j
       - papi-read-records
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://papi-neo4j:7687
-      NEO4J_USERNAME: ${PAPI_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${PAPI_NEO4J_PASSWORD}
+      NEO4J_URL: bolt://papi-read-records-neo4j-replica:7687
+      NEO4J_USERNAME: ${NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
-  papi-neo4j:
-    restart: always
-    image: neo4j:4.2@sha256:699af10b322f66d45e42b19dfbab752e09801169165a756c60254bf66c5d2c15
+  papi-read-records-neo4j-replica:
+    image: neo4j:4.2-enterprise
     networks:
-      - papi-neo4j
-    healthcheck: &neo4j-healthcheck
-      test: wget http://localhost:7474/browser -O-
-      interval: 5s
-      timeout: 3s
-      retries: 30
+      - neo4j-cluster
+      - papi-read-records
+    healthcheck:
+      <<: *neo4j-healthcheck
     environment:
-      NEO4J_AUTH: ${PAPI_NEO4J_USERNAME}/${PAPI_NEO4J_PASSWORD}
-      NEO4JLABS_PLUGINS: '["apoc"]'
-      NEO4J_apoc_export_file_enabled: "true"
-      NEO4J_apoc_import_file_enabled: "true"
-      NEO4J_apoc_import_file_use__neo4j__config: "true"
-    volumes:
-      - papi-neo4j-data:/data
-      - papi-neo4j-logs:/logs
-      - papi-neo4j-import:/var/lib/neo4j/import
-      - papi-neo4j-plugins:/plugins
+      <<: *neo4j-replica-env
+      NEO4J_causal__clustering_discovery__advertised__address: papi-read-records-neo4j-replica:5000
 
   papi-bookcover-service:
     restart: always
@@ -178,115 +345,25 @@ services:
     volumes:
       - papi-bookcover-service-redis-data:/data
 
-  # management
-  management-api-gateway:
-    restart: always
-    image: ghcr.io/bo2kshelf/management-api-gateway:develop@sha256:dabb3121952b1e90ba0913e94a8c85dd77947e0acb86bc2164a8e7510766d6fd
-    depends_on:
-      mapi-read-contents-service:
-        condition: service_started
-      mapi-edit-contents-service:
-        condition: service_started
-      mapi-bookcover-service:
-        condition: service_started
-    networks:
-      - mapi-read-contents
-      - mapi-edit-contents
-      - mapi-bookcover
-    ports:
-      - published: ${MANAGEMENT_API_PORT}
-        target: 4000
-    environment:
-      PORT: 4000
-      READ_CONTENTS_SERVICE_URL: http://mapi-read-contents-service:4000/graphql
-      EDIT_CONTENTS_SERVICE_URL: http://mapi-edit-contents-service:4000/graphql
-      BOOKCOVER_SERVICE_URL: http://mapi-bookcover-service:4000/graphql
-
-  mapi-read-contents-service:
-    restart: always
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
-    depends_on:
-      mapi-neo4j:
-        condition: service_healthy
-    networks:
-      - mapi-neo4j
-      - mapi-read-contents
-    environment:
-      PORT: 4000
-      NEO4J_URL: bolt://mapi-neo4j:7687
-      NEO4J_USERNAME: ${MAPI_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${MAPI_NEO4J_PASSWORD}
-
-  mapi-edit-contents-service:
-    restart: always
-    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
-    depends_on:
-      mapi-neo4j:
-        condition: service_healthy
-    networks:
-      - mapi-neo4j
-      - mapi-edit-contents
-    environment:
-      PORT: 4000
-      NEO4J_URL: bolt://mapi-neo4j:7687
-      NEO4J_USERNAME: ${MAPI_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${MAPI_NEO4J_PASSWORD}
-
-  mapi-neo4j:
-    restart: always
-    image: neo4j:4.2@sha256:699af10b322f66d45e42b19dfbab752e09801169165a756c60254bf66c5d2c15
-    networks:
-      - mapi-neo4j
-    healthcheck: *neo4j-healthcheck
-    environment:
-      NEO4J_AUTH: ${MAPI_NEO4J_USERNAME}/${MAPI_NEO4J_PASSWORD}
-      NEO4JLABS_PLUGINS: '["apoc"]'
-      NEO4J_apoc_export_file_enabled: "true"
-      NEO4J_apoc_import_file_enabled: "true"
-      NEO4J_apoc_import_file_use__neo4j__config: "true"
-    volumes:
-      - mapi-neo4j-data:/data
-      - mapi-neo4j-logs:/logs
-      - mapi-neo4j-import:/var/lib/neo4j/import
-      - mapi-neo4j-plugins:/plugins
-
-  mapi-bookcover-service:
-    restart: always
-    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
-    networks:
-      - imageproxy
-      - mapi-bookcover
-    depends_on:
-      papi-bookcover-service-redis:
-        condition: service_healthy
-    environment:
-      PORT: 4000
-      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
-      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
-      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-      REDIS_HOST: mapi-bookcover-service-redis
-      REDIS_PORT: 6379
-
-  mapi-bookcover-service-redis:
-    restart: always
-    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
-    healthcheck: *redis-healthcheck
-    networks:
-      - mapi-bookcover
-    volumes:
-      - mapi-bookcover-service-redis-data:/data
-
 volumes:
+  # imageproxy
   imageproxy-redis-data:
-  users-api-mysql-data:
-  bookcover-api-redis-data:
-  neo4j-api-neo4j-data:
-  neo4j-api-neo4j-logs:
-  neo4j-api-neo4j-import:
-  neo4j-api-neo4j-plugins:
-  search-api-elasticsearch:
-  auth-server-mongo-data:
-  auth-server-postgresql-data:
+  # neo4j
+  neo4j-secondaly-core-1-data:
+  neo4j-secondaly-core-1-logs:
+  neo4j-secondaly-core-1-import:
+  neo4j-secondaly-core-1-plugins:
+
+  neo4j-secondaly-core-2-data:
+  neo4j-secondaly-core-2-logs:
+  neo4j-secondaly-core-2-import:
+  neo4j-secondaly-core-2-plugins:
+  # management
+  mapi-edit-contents-neo4j-core-data:
+  mapi-edit-contents-neo4j-core-logs:
+  mapi-edit-contents-neo4j-core-import:
+  mapi-edit-contents-neo4j-core-plugins:
+  mapi-bookcover-service-redis-data:
   # public
   papi-read-users-mysql-data:
   papi-neo4j-data:
@@ -294,16 +371,22 @@ volumes:
   papi-neo4j-import:
   papi-neo4j-plugins:
   papi-bookcover-service-redis-data:
-  # management
-  mapi-neo4j-data:
-  mapi-neo4j-logs:
-  mapi-neo4j-import:
-  mapi-neo4j-plugins:
-  mapi-bookcover-service-redis-data:
 
 networks:
+  # neo4j
+  neo4j-cluster:
+    driver: bridge
+
   # imageproxy
   imageproxy:
+    driver: bridge
+
+  # management
+  mapi-read-contents:
+    driver: bridge
+  mapi-edit-contents:
+    driver: bridge
+  mapi-bookcover:
     driver: bridge
 
   # public
@@ -315,17 +398,5 @@ networks:
     driver: bridge
   papi-read-records:
     driver: bridge
-  papi-neo4j:
-    driver: bridge
   papi-bookcover:
-    driver: bridge
-
-  # management
-  mapi-read-contents:
-    driver: bridge
-  mapi-edit-contents:
-    driver: bridge
-  mapi-neo4j:
-    driver: bridge
-  mapi-bookcover:
     driver: bridge
