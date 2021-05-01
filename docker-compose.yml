@@ -1,6 +1,7 @@
 version: "3.7"
 
 services:
+  # imageproxy
   imageproxy:
     restart: always
     image: willnorris/imageproxy@sha256:7e4c77d1b64db9152591dbfd8565d5d377eb8a243040efa4e241b97ba94feb1d
@@ -28,256 +29,12 @@ services:
     volumes:
       - imageproxy-redis-data:/data
 
-  api-gateway:
-    restart: always
-    image: ghcr.io/bo2kshelf/api-gateway:develop@sha256:bb5c602f8c0e2689fe807f50ec072c256d6b1942d5b5b2f9d23a073719c8a9b1
-    networks:
-      - api
-    ports:
-      - published: ${API_GATEWAY_PORT}
-        target: 4000
-    depends_on:
-      bookcover-api:
-        condition: service_started
-      neo4j-api:
-        condition: service_started
-      users-api:
-        condition: service_started
-      search-api:
-        condition: service_started
-    environment:
-      PORT: 4000
-      BOOKS_API_URL: http://neo4j-api:4000/graphql
-      BOOKCOVER_API_URL: http://bookcover-api:4000/graphql
-      SEARCH_API_URL: http://search-api:4000/graphql
-      USERS_API_URL: http://users-api:4000/graphql
-      JWT_SECRET: $API_GATEWAY_JWT_SECRET
-      USER_API_ENDPOINT: http://users-api:4000
-
-  bookcover-api:
-    restart: always
-    image: ghcr.io/bo2kshelf/bookcover-api:develop@sha256:8e4bfab9924f631a92490fd2c3d9722ee255bc217771311674a081de73d69550
-    networks:
-      - api
-      - bookcover-api
-      - imageproxy
-    ports:
-      - published: ${BOOKCOVER_API_PORT}
-        target: 4000
-    depends_on:
-      bookcover-api-redis:
-        condition: service_healthy
-    environment:
-      PORT: 4000
-      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
-      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
-      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-      REDIS_HOST: bookcover-api-redis
-      REDIS_PORT: 6379
-
-  bookcover-api-redis:
-    restart: always
-    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
-    healthcheck: *redis-healthcheck
-    networks:
-      - bookcover-api
-    volumes:
-      - bookcover-api-redis-data:/data
-
-  neo4j-api:
-    restart: always
-    image: ghcr.io/bo2kshelf/neo4j-api:develop@sha256:95308053eb00d917233e2cdc4d1e63b9771f865ea4d5c86889e08e23292b2813
-    depends_on:
-      neo4j-api-neo4j:
-        condition: service_healthy
-    networks:
-      - api
-      - neo4j-api
-    ports:
-      - published: ${NEO4J_API_PORT}
-        target: 4000
-    environment:
-      PORT: 4000
-      NEO4J_URL: bolt://neo4j-api-neo4j:7687
-      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
-
-  neo4j-api-neo4j:
-    restart: always
-    image: neo4j:4.2@sha256:699af10b322f66d45e42b19dfbab752e09801169165a756c60254bf66c5d2c15
-    networks:
-      - neo4j-api
-      - readonly-neo4j
-      - writable-neo4j
-    ports:
-      - published: $NEO4J_API_NEO4J_HTTP_PORT
-        target: 7474
-      - published: $NEO4J_API_NEO4J_BOLT_PORT
-        target: 7687
-    healthcheck: &neo4j-healthcheck
-      test: wget http://localhost:7474/browser -O-
-      interval: 5s
-      timeout: 3s
-      retries: 30
-    environment:
-      NEO4J_AUTH: ${NEO4J_API_NEO4J_USERNAME}/${NEO4J_API_NEO4J_PASSWORD}
-      NEO4JLABS_PLUGINS: '["apoc"]'
-      NEO4J_apoc_export_file_enabled: "true"
-      NEO4J_apoc_import_file_enabled: "true"
-      NEO4J_apoc_import_file_use__neo4j__config: "true"
-    volumes:
-      - neo4j-api-neo4j-data:/data
-      - neo4j-api-neo4j-logs:/logs
-      - neo4j-api-neo4j-import:/var/lib/neo4j/import
-      - neo4j-api-neo4j-plugins:/plugins
-
-  users-api:
-    restart: always
-    image: ghcr.io/bo2kshelf/users-api:develop@sha256:c83befc51f1dd24dfbd4749da70b6eb5c10c676926639401169526f63b0c6b26
-    depends_on:
-      users-api-mysql:
-        condition: service_healthy
-    networks:
-      - api
-      - users-api
-      - imageproxy
-    ports:
-      - published: ${USERS_API_PORT}
-        target: 4000
-    environment:
-      PORT: 4000
-      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-      JWT_SECRET: $USERS_API_JWT_SECRET
-      PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
-
-  users-api-mysql:
-    restart: always
-    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
-    networks:
-      - users-api
-      - readonly-users-db
-      - writable-users-db
-    ports:
-      - published: $USERS_API_MYSQL_PORT
-        target: 3306
-    environment:
-      MYSQL_ROOT_PASSWORD: $USERS_API_MYSQL_ROOT_PASSWORD
-      MYSQL_DATABASE: $USERS_API_MYSQL_DATABASE
-    volumes:
-      - users-api-mysql-data:/var/lib/mysql
-    healthcheck: &mysql-healthcheck
-      test: "mysqladmin ping -h localhost"
-      interval: 10s
-      timeout: 20s
-      retries: 10
-
-  search-api:
-    restart: always
-    image: ghcr.io/bo2kshelf/search-api:develop@sha256:340697cf79efb99c971bb438ae1bfcc79f6e3f120c780a7e4fcb016095a401b5
-    depends_on:
-      search-api-elasticsearch:
-        condition: service_healthy
-    networks:
-      - api
-      - search-api
-    ports:
-      - published: ${SEARCH_API_PORT}
-        target: 4000
-    environment:
-      ELASTICSEARCH_NODE_URI: http://search-api-elasticsearch:9200
-      ELASTICSEARCH_BOOKS_INDEX: books
-      ELASTICSEARCH_AUTHORS_INDEX: authors
-      ELASTICSEARCH_SERIES_INDEX: series
-
-  search-api-elasticsearch:
-    restart: always
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2@sha256:2c257b68f361872e13bdd476cba152e232a314ec61b0eedfc1f71b628ba39432
-    networks:
-      - search-api
-    environment:
-      discovery.type: single-node
-      ES_JAVA_OPTS: -Xms512m -Xmx512m
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - search-api-elasticsearch:/usr/share/elasticsearch/data
-    healthcheck: &elasicsearch-healthcheck
-      test: "curl --fail http://localhost:9200 || exit 1"
-      interval: 2s
-      timeout: 60s
-      retries: 300
-
-  auth-server:
-    restart: always
-    image: ghcr.io/bo2kshelf/auth-server:develop@sha256:f1406eefecab1ddc917f0e31ad8e109fbd61de31102bfea5839771f73b0bb3d1
-    depends_on:
-      auth-server-mongo:
-        condition: service_healthy
-      auth-server-postgresql:
-        condition: service_healthy
-    environment:
-      PORT: 4000
-      SESSION_NAME: ${AUTH_SERVER_SESSION_NAME}
-      USER_API_ENDPOINT: http://users-api:4000
-      JWT_SECRET: ${AUTH_SERVER_JWT_SECRET}
-      SESSION_SECRET: ${AUTH_SERVER_SESSION_SECRET}
-      SESSION_MONGO_URI: mongodb://${AUTH_SERVER_MONGO_USERNAME}:${AUTH_SERVER_MONGO_PASSWORD}@auth-server-mongo:27017/${AUTH_SERVER_MONGO_DATABASE}?authSource=admin
-      PRISMA_DATABASE_URL: postgresql://${AUTH_SERVER_POSTGRES_USERNAME}:${AUTH_SERVER_POSTGRES_PASSWORD}@auth-server-postgresql:5432/${AUTH_SERVER_POSTGRES_DATABASE}
-    ports:
-      - published: ${AUTH_SERVER_PORT}
-        target: 4000
-    networks:
-      - auth-server
-      - users-api
-
-  auth-server-mongo:
-    restart: always
-    image: mongo:4.4@sha256:64be89e169fc33f3fa140c2c548186be4acd972bd7174344505fc5630dcf707c
-    healthcheck: &mongo-healthcheck
-      test: test $$(echo "db.runCommand('ping').ok" | mongo --quiet) -eq 1
-      interval: 2s
-      start_period: 30s
-    ports:
-      - published: $AUTH_SERVER_MONGO_PORT
-        target: 27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${AUTH_SERVER_MONGO_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${AUTH_SERVER_MONGO_PASSWORD}
-      MONGO_INITDB_DATABASE: ${AUTH_SERVER_MONGO_DATABASE}
-    networks:
-      - auth-server
-    volumes:
-      - auth-server-mongo-data:/data/db
-
-  auth-server-postgresql:
-    restart: always
-    image: postgres:13.2@sha256:61d5d8ef6cb4e2035f053f26b6b455c201a809354084cc8426b6904b8dd35602
-    healthcheck: &postgresql-healthcheck
-      test: ["CMD", "pg_isready"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
-    networks:
-      - auth-server
-    ports:
-      - published: $AUTH_SERVER_POSTGRES_PORT
-        target: 5432
-    environment:
-      POSTGRES_USER: ${AUTH_SERVER_POSTGRES_USERNAME}
-      POSTGRES_PASSWORD: ${AUTH_SERVER_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${AUTH_SERVER_POSTGRES_DATABASE}
-    volumes:
-      - auth-server-postgresql-data:/var/lib/postgresql/data
-
   # for development tools
   adminer:
     restart: always
     image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
     networks:
-      - auth-server
-      - users-api
+      - papi-users-mysql
     ports:
       - published: $ADMINER_PORT
         target: 8080
@@ -316,46 +73,84 @@ services:
     restart: always
     image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
     depends_on:
-      users-api-mysql:
+      papi-users-mysql:
         condition: service_healthy
     networks:
       - imageproxy
-      - readonly-users-db
       - papi-read-users
     environment:
       PORT: 4000
-      PRISMA_DATABASE_URL: mysql://root:${USERS_API_MYSQL_ROOT_PASSWORD}@users-api-mysql:3306/${USERS_API_MYSQL_DATABASE}
+      PRISMA_DATABASE_URL: mysql://root:${PAPI_USERS_MYSQL_ROOT_PASSWORD}@papi-users-mysql:3306/${PAPI_USERS_MYSQL_DATABASE}
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+
+  papi-users-mysql:
+    restart: always
+    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
+    networks:
+      - papi-users-mysql
+      - papi-read-users
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PAPI_USERS_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PAPI_USERS_MYSQL_DATABASE}
+    volumes:
+      - papi-read-users-mysql-data:/var/lib/mysql
+    healthcheck: &mysql-healthcheck
+      test: "mysqladmin ping -h localhost"
+      interval: 10s
+      timeout: 20s
+      retries: 10
 
   papi-read-contents-service:
     restart: always
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
     depends_on:
-      neo4j-api-neo4j:
+      papi-neo4j:
         condition: service_healthy
     networks:
-      - readonly-neo4j
+      - papi-neo4j
       - papi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://neo4j-api-neo4j:7687
-      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+      NEO4J_URL: bolt://papi-neo4j:7687
+      NEO4J_USERNAME: ${PAPI_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${PAPI_NEO4J_PASSWORD}
 
   papi-read-records-service:
     restart: always
     image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:5f00a6f8af47c76663e9c14f70cfc08d6499ee65085befe0b33ca2cd8f0a270d
     depends_on:
-      neo4j-api-neo4j:
+      papi-neo4j:
         condition: service_healthy
     networks:
-      - readonly-neo4j
+      - papi-neo4j
       - papi-read-records
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://neo4j-api-neo4j:7687
-      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+      NEO4J_URL: bolt://papi-neo4j:7687
+      NEO4J_USERNAME: ${PAPI_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${PAPI_NEO4J_PASSWORD}
+
+  papi-neo4j:
+    restart: always
+    image: neo4j:4.2@sha256:699af10b322f66d45e42b19dfbab752e09801169165a756c60254bf66c5d2c15
+    networks:
+      - papi-neo4j
+    healthcheck: &neo4j-healthcheck
+      test: wget http://localhost:7474/browser -O-
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    environment:
+      NEO4J_AUTH: ${PAPI_NEO4J_USERNAME}/${PAPI_NEO4J_PASSWORD}
+      NEO4JLABS_PLUGINS: '["apoc"]'
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_import_file_use__neo4j__config: "true"
+    volumes:
+      - papi-neo4j-data:/data
+      - papi-neo4j-logs:/logs
+      - papi-neo4j-import:/var/lib/neo4j/import
+      - papi-neo4j-plugins:/plugins
 
   papi-bookcover-service:
     restart: always
@@ -411,31 +206,49 @@ services:
     restart: always
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
     depends_on:
-      neo4j-api-neo4j:
+      mapi-neo4j:
         condition: service_healthy
     networks:
-      - readonly-neo4j
+      - mapi-neo4j
       - mapi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://neo4j-api-neo4j:7687
-      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+      NEO4J_URL: bolt://mapi-neo4j:7687
+      NEO4J_USERNAME: ${MAPI_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${MAPI_NEO4J_PASSWORD}
 
   mapi-edit-contents-service:
     restart: always
     image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
     depends_on:
-      neo4j-api-neo4j:
+      mapi-neo4j:
         condition: service_healthy
     networks:
-      - writable-neo4j
+      - mapi-neo4j
       - mapi-edit-contents
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://neo4j-api-neo4j:7687
-      NEO4J_USERNAME: ${NEO4J_API_NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_API_NEO4J_PASSWORD}
+      NEO4J_URL: bolt://mapi-neo4j:7687
+      NEO4J_USERNAME: ${MAPI_NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${MAPI_NEO4J_PASSWORD}
+
+  mapi-neo4j:
+    restart: always
+    image: neo4j:4.2@sha256:699af10b322f66d45e42b19dfbab752e09801169165a756c60254bf66c5d2c15
+    networks:
+      - mapi-neo4j
+    healthcheck: *neo4j-healthcheck
+    environment:
+      NEO4J_AUTH: ${MAPI_NEO4J_USERNAME}/${MAPI_NEO4J_PASSWORD}
+      NEO4JLABS_PLUGINS: '["apoc"]'
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_import_file_use__neo4j__config: "true"
+    volumes:
+      - mapi-neo4j-data:/data
+      - mapi-neo4j-logs:/logs
+      - mapi-neo4j-import:/var/lib/neo4j/import
+      - mapi-neo4j-plugins:/plugins
 
   mapi-bookcover-service:
     restart: always
@@ -475,50 +288,34 @@ volumes:
   auth-server-mongo-data:
   auth-server-postgresql-data:
   # public
+  papi-read-users-mysql-data:
+  papi-neo4j-data:
+  papi-neo4j-logs:
+  papi-neo4j-import:
+  papi-neo4j-plugins:
   papi-bookcover-service-redis-data:
   # management
+  mapi-neo4j-data:
+  mapi-neo4j-logs:
+  mapi-neo4j-import:
+  mapi-neo4j-plugins:
   mapi-bookcover-service-redis-data:
 
 networks:
+  # imageproxy
   imageproxy:
-    driver: bridge
-
-  readonly-neo4j:
-    driver: bridge
-
-  writable-neo4j:
-    driver: bridge
-
-  readonly-users-db:
-    driver: bridge
-
-  writable-users-db:
-    driver: bridge
-
-  auth-server:
-    driver: bridge
-
-  api:
-    driver: bridge
-
-  users-api:
-    driver: bridge
-
-  neo4j-api:
-    driver: bridge
-
-  bookcover-api:
-    driver: bridge
-
-  search-api:
     driver: bridge
 
   # public
   papi-read-users:
     driver: bridge
+  papi-users-mysql:
+    driver: bridge
   papi-read-contents:
     driver: bridge
   papi-read-records:
+    driver: bridge
+  papi-neo4j:
     driver: bridge
   papi-bookcover:
     driver: bridge
@@ -527,6 +324,8 @@ networks:
   mapi-read-contents:
     driver: bridge
   mapi-edit-contents:
+    driver: bridge
+  mapi-neo4j:
     driver: bridge
   mapi-bookcover:
     driver: bridge
