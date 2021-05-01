@@ -131,7 +131,7 @@ services:
 
   mapi-read-contents-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
     depends_on:
       mapi-read-contents-neo4j-replica:
         condition: service_healthy
@@ -139,7 +139,7 @@ services:
       - mapi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://mapi-read-contents-neo4j-replica:7687
+      NEO4J_URL: neo4j://mapi-read-contents-neo4j-replica:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
@@ -265,7 +265,7 @@ services:
 
   papi-read-contents-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:97a0a55e3b970dcd32da69f2ed8c8d3238dfc429bdf33a84f862ed7a995e28a5
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
     depends_on:
       papi-read-contents-neo4j-replica:
         condition: service_healthy
@@ -273,7 +273,7 @@ services:
       - papi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://papi-read-contents-neo4j-replica:7687
+      NEO4J_URL: neo4j://papi-read-contents-neo4j-replica:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
@@ -282,9 +282,6 @@ services:
     networks:
       - neo4j-cluster
       - papi-read-contents
-    ports:
-      - 7474:7474
-      - 7687:7687
     healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-replica-env
@@ -292,7 +289,7 @@ services:
 
   papi-read-records-service:
     restart: always
-    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:5f00a6f8af47c76663e9c14f70cfc08d6499ee65085befe0b33ca2cd8f0a270d
+    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:44ba6f46f0d39d413e9787feac78ecef58965b1ccceced03d79072cc1a04726b
     depends_on:
       papi-read-records-neo4j-replica:
         condition: service_healthy
@@ -300,7 +297,7 @@ services:
       - papi-read-records
     environment:
       PORT: 4000
-      NEO4J_URL: bolt://papi-read-records-neo4j-replica:7687
+      NEO4J_URL: neo4j://papi-read-records-neo4j-replica:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
