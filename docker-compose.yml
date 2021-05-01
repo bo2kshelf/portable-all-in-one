@@ -424,7 +424,7 @@ services:
 
   mapi-edit-contents-service:
     restart: always
-    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:7f8653677f40414c88a9ec183a11bb24c3c3fec8c325c582002cbda3458a607b
+    image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:c977f55605365b4b60950bb729c66bcf3b9e168b4dcaf325c2adaada96bf5d6d
     depends_on:
       neo4j-api-neo4j:
         condition: service_healthy
