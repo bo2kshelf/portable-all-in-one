@@ -12,6 +12,12 @@ x-neo4j-healthcheck: &neo4j-healthcheck
   timeout: 3s
   retries: 50
 
+x-neo4j-healthcheck: &mysql-healthcheck
+  test: "mysqladmin ping -h localhost"
+  interval: 10s
+  timeout: 20s
+  retries: 10
+
 x-neo4j-common-env: &neo4j-common-env
   NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
   NEO4JLABS_PLUGINS: '["apoc"]'
@@ -39,8 +45,7 @@ services:
     image: neo4j:4.2-enterprise
     networks:
       - neo4j-cluster
-    healthcheck:
-      <<: *neo4j-healthcheck
+    healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-core-env
       NEO4J_causal__clustering_discovery__advertised__address: neo4j-secondaly-core-1:5000
@@ -54,8 +59,7 @@ services:
     image: neo4j:4.2-enterprise
     networks:
       - neo4j-cluster
-    healthcheck:
-      <<: *neo4j-healthcheck
+    healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-core-env
       NEO4J_causal__clustering_discovery__advertised__address: neo4j-secondaly-core-2:5000
@@ -83,8 +87,7 @@ services:
   imageproxy-redis:
     restart: always
     image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
-    healthcheck:
-      <<: *redis-healthcheck
+    healthcheck: *redis-healthcheck
     networks:
       - imageproxy
     volumes:
@@ -145,8 +148,7 @@ services:
     networks:
       - neo4j-cluster
       - mapi-read-contents
-    healthcheck:
-      <<: *neo4j-healthcheck
+    healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-replica-env
       NEO4J_causal__clustering_discovery__advertised__address: mapi-read-contents-neo4j-replica:5000
@@ -170,8 +172,7 @@ services:
     networks:
       - neo4j-cluster
       - mapi-edit-contents
-    healthcheck:
-      <<: *neo4j-healthcheck
+    healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-core-env
       NEO4J_causal__clustering_discovery__advertised__address: mapi-edit-contents-neo4j-core:5000
@@ -260,11 +261,7 @@ services:
       MYSQL_DATABASE: ${PAPI_USERS_MYSQL_DATABASE}
     volumes:
       - papi-read-users-mysql-data:/var/lib/mysql
-    healthcheck: &mysql-healthcheck
-      test: "mysqladmin ping -h localhost"
-      interval: 10s
-      timeout: 20s
-      retries: 10
+    healthcheck: *mysql-healthcheck
 
   papi-read-contents-service:
     restart: always
@@ -288,8 +285,7 @@ services:
     ports:
       - 7474:7474
       - 7687:7687
-    healthcheck:
-      <<: *neo4j-healthcheck
+    healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-replica-env
       NEO4J_causal__clustering_discovery__advertised__address: papi-read-contents-neo4j-replica:5000
@@ -313,8 +309,7 @@ services:
     networks:
       - neo4j-cluster
       - papi-read-records
-    healthcheck:
-      <<: *neo4j-healthcheck
+    healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-replica-env
       NEO4J_causal__clustering_discovery__advertised__address: papi-read-records-neo4j-replica:5000
