@@ -12,7 +12,7 @@ x-neo4j-healthcheck: &neo4j-healthcheck
   timeout: 3s
   retries: 50
 
-x-neo4j-healthcheck: &mysql-healthcheck
+x-mysql-healthcheck: &mysql-healthcheck
   test: "mysqladmin ping -h localhost"
   interval: 10s
   timeout: 20s
@@ -64,6 +64,11 @@ services:
     image: neo4j:4.2-enterprise
     networks:
       - neo4j-cluster
+    ports:
+      - published: 7475
+        target: 7474
+      - published: 7688
+        target: 7687
     healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-core-env
@@ -78,6 +83,11 @@ services:
     image: neo4j:4.2-enterprise
     networks:
       - neo4j-cluster
+    ports:
+      - published: 7476
+        target: 7474
+      - published: 7689
+        target: 7687
     healthcheck: *neo4j-healthcheck
     environment:
       <<: *neo4j-core-env
@@ -363,10 +373,6 @@ volumes:
   mapi-bookcover-service-redis-data:
   # public
   papi-read-users-mysql-data:
-  papi-neo4j-data:
-  papi-neo4j-logs:
-  papi-neo4j-import:
-  papi-neo4j-plugins:
   papi-bookcover-service-redis-data:
 
 networks:
