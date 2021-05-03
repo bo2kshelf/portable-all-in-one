@@ -18,113 +18,74 @@ x-mysql-healthcheck: &mysql-healthcheck
   timeout: 20s
   retries: 10
 
-x-neo4j-common-env: &neo4j-common-env
-  NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
-  NEO4JLABS_PLUGINS: '["apoc"]'
-  NEO4J_apoc_export_file_enabled: "true"
-  NEO4J_apoc_import_file_enabled: "true"
-  NEO4J_apoc_import_file_use__neo4j__config: "true"
-  NEO4J_dbms_memory_pagecache_size: "100M"
-  NEO4J_dbms_memory_heap_initial__size: "100M"
-  NEO4J_causal__clustering_initial__discovery__members: neo4j-core-1:5000,neo4j-core-2:5000,neo4j-core-3:5000
+volumes:
+  # imageproxy
+  imageproxy-redis-data:
 
-x-neo4j-core-env: &neo4j-core-env
-  <<: *neo4j-common-env
-  NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
-  NEO4J_dbms_mode: CORE
-  NEO4J_dbms_default__database: $NEO4J_CONTENTS_DATABASE
-  NEO4J_causal__clustering_minimum__core__cluster__size__at__formation: 3
-  NEO4J_causal__clustering_minimum__core__cluster__size__at__runtime: 3
+  # neo4j
+  neo4j-core-conf:
+  neo4j-core-data:
+  neo4j-core-logs:
+  neo4j-core-import:
+  neo4j-core-metrics:
+  neo4j-core-plugins:
 
-x-neo4j-fabric-env: &neo4j-fabric-env
-  <<: *neo4j-common-env
-  NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
-  NEO4J_dbms_mode: SINGLE
-  NEO4J_fabric_database_name: $NEO4J_FABRIC_DATABASE
-  NEO4J_fabric_routing_servers: neo4j-fabric-1:7687
-  NEO4J_fabric_graph_0_name: $NEO4J_CONTENTS_GRAPH_NAME
-  NEO4J_fabric_graph_0_database: $NEO4J_CONTENTS_DATABASE
-  NEO4J_fabric_graph_0_uri: neo4j://neo4j-core-1:7687,neo4j://neo4j-core-2:7687,neo4j://neo4j-core-3:7687
+  # management
+  mapi-bookcover-service-redis-data:
 
-x-neo4j-replica-env: &neo4j-replica-env
-  <<: *neo4j-common-env
-  NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
-  NEO4J_dbms_mode: READ_REPLICA
-  NEO4J_dbms_default__database: $NEO4J_CONTENTS_DATABASE
+  # public
+  papi-read-users-mysql-data:
+  papi-bookcover-service-redis-data:
+
+networks:
+  # neo4j
+  neo4j-core:
+  # imageproxy
+  imageproxy:
+  # management
+  mapi-read-contents:
+  mapi-edit-contents:
+  mapi-bookcover:
+    # public
+  papi-read-users:
+  papi-users-mysql:
+  papi-read-contents:
+  papi-read-records:
+  papi-bookcover:
 
 services:
-  neo4j-core-1:
-    hostname: neo4j-core-1
+  # neo4j
+  neo4j-core:
+    hostname: neo4j-core
     image: neo4j:4.2-enterprise
     networks:
-      - neo4j-cluster
-    healthcheck: *neo4j-healthcheck
-    volumes:
-      - neo4j-core-1-conf:/conf
-      - neo4j-core-1-data:/data
-      - neo4j-core-1-logs:/logs
-      - neo4j-core-1-import:/var/lib/neo4j/import
-      - neo4j-core-1-metrics:/metrics
-      - neo4j-core-1-plugins:/plugins
-    environment:
-      <<: *neo4j-core-env
-      NEO4J_dbms_connector_bolt_advertised__address: neo4j-core-1:7687
-
-  neo4j-core-2:
-    hostname: neo4j-core-2
-    image: neo4j:4.2-enterprise
-    networks:
-      - neo4j-cluster
-    healthcheck: *neo4j-healthcheck
-    volumes:
-      - neo4j-core-2-conf:/conf
-      - neo4j-core-2-data:/data
-      - neo4j-core-2-logs:/logs
-      - neo4j-core-2-import:/var/lib/neo4j/import
-      - neo4j-core-2-metrics:/metrics
-      - neo4j-core-2-plugins:/plugins
-    environment:
-      <<: *neo4j-core-env
-      NEO4J_dbms_connector_bolt_advertised__address: neo4j-core-2:7687
-
-  neo4j-core-3:
-    hostname: neo4j-core-3
-    image: neo4j:4.2-enterprise
-    networks:
-      - neo4j-cluster
-    healthcheck: *neo4j-healthcheck
-    volumes:
-      - neo4j-core-3-conf:/conf
-      - neo4j-core-3-data:/data
-      - neo4j-core-3-logs:/logs
-      - neo4j-core-3-import:/var/lib/neo4j/import
-      - neo4j-core-3-metrics:/metrics
-      - neo4j-core-3-plugins:/plugins
-    environment:
-      <<: *neo4j-core-env
-      NEO4J_dbms_connector_bolt_advertised__address: neo4j-core-3:7687
-
-  neo4j-fabric-1:
-    hostname: neo4j-fabric-1
-    image: neo4j:4.2-enterprise
-    networks:
-      - neo4j-cluster
-      - neo4j-fabric
+      - neo4j-core
     ports:
-      - published: 17474
+      - published: $NEO4J_HTTP_PORT
         target: 7474
-      - published: 17687
+      - published: $NEO4J_BOLT_PORT
         target: 7687
     healthcheck: *neo4j-healthcheck
     volumes:
-      - neo4j-fabric-1-conf:/conf
-      - neo4j-fabric-1-data:/data
-      - neo4j-fabric-1-logs:/logs
-      - neo4j-fabric-1-import:/var/lib/neo4j/import
-      - neo4j-fabric-1-metrics:/metrics
-      - neo4j-fabric-1-plugins:/plugins
+      - neo4j-core-conf:/conf
+      - neo4j-core-data:/data
+      - neo4j-core-logs:/logs
+      - neo4j-core-import:/var/lib/neo4j/import
+      - neo4j-core-metrics:/metrics
+      - neo4j-core-plugins:/plugins
     environment:
-      <<: *neo4j-fabric-env
+      NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4JLABS_PLUGINS: '["apoc"]'
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_import_file_use__neo4j__config: "true"
+      NEO4J_dbms_mode: SINGLE
+      NEO4J_dbms_default__database: $NEO4J_CONTENTS_DATABASE
+      NEO4J_dbms_connector_http_listen__address: ":7474"
+      NEO4J_dbms_connector_https_listen__address: ":6473"
+      NEO4J_dbms_connector_bolt_listen__address: ":7687"
+      NEO4J_dbms_connector_bolt_advertised__address: neo4j-core:7687
 
   # imageproxy
   imageproxy:
@@ -185,14 +146,14 @@ services:
   mapi-read-contents-service:
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
     depends_on:
-      neo4j-fabric-1:
+      neo4j-core:
         condition: service_healthy
     networks:
-      - neo4j-fabric
+      - neo4j-core
       - mapi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: neo4j://neo4j-fabric-1:7687
+      NEO4J_URL: neo4j://neo4j-core:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
@@ -202,14 +163,14 @@ services:
     #   context: ./edit-contents-service
     #   dockerfile: Dockerfile
     depends_on:
-      neo4j-fabric-1:
+      neo4j-core:
         condition: service_healthy
     networks:
-      - neo4j-fabric
+      - neo4j-core
       - mapi-edit-contents
     environment:
       PORT: 4000
-      NEO4J_URL: neo4j://neo4j-fabric-1:7687
+      NEO4J_URL: neo4j://neo4j-core:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
@@ -291,28 +252,28 @@ services:
   papi-read-contents-service:
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
     depends_on:
-      neo4j-fabric-1:
+      neo4j-core:
         condition: service_healthy
     networks:
-      - neo4j-fabric
+      - neo4j-core
       - papi-read-contents
     environment:
       PORT: 4000
-      NEO4J_URL: neo4j://neo4j-fabric-1:7687
+      NEO4J_URL: neo4j://neo4j-core:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
   papi-read-records-service:
     image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:44ba6f46f0d39d413e9787feac78ecef58965b1ccceced03d79072cc1a04726b
     depends_on:
-      neo4j-fabric-1:
+      neo4j-core:
         condition: service_healthy
     networks:
-      - neo4j-fabric
+      - neo4j-core
       - papi-read-records
     environment:
       PORT: 4000
-      NEO4J_URL: neo4j://neo4j-fabric-1:7687
+      NEO4J_URL: neo4j://neo4j-core:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
@@ -339,60 +300,3 @@ services:
       - papi-bookcover
     volumes:
       - papi-bookcover-service-redis-data:/data
-
-volumes:
-  # imageproxy
-  imageproxy-redis-data:
-
-  # neo4j
-  neo4j-core-1-conf:
-  neo4j-core-1-data:
-  neo4j-core-1-logs:
-  neo4j-core-1-import:
-  neo4j-core-1-metrics:
-  neo4j-core-1-plugins:
-
-  neo4j-core-2-conf:
-  neo4j-core-2-data:
-  neo4j-core-2-logs:
-  neo4j-core-2-import:
-  neo4j-core-2-metrics:
-  neo4j-core-2-plugins:
-
-  neo4j-core-3-conf:
-  neo4j-core-3-data:
-  neo4j-core-3-logs:
-  neo4j-core-3-import:
-  neo4j-core-3-metrics:
-  neo4j-core-3-plugins:
-
-  neo4j-fabric-1-conf:
-  neo4j-fabric-1-data:
-  neo4j-fabric-1-logs:
-  neo4j-fabric-1-import:
-  neo4j-fabric-1-metrics:
-  neo4j-fabric-1-plugins:
-
-  # management
-  mapi-bookcover-service-redis-data:
-
-  # public
-  papi-read-users-mysql-data:
-  papi-bookcover-service-redis-data:
-
-networks:
-  # neo4j
-  neo4j-cluster:
-  neo4j-fabric:
-  # imageproxy
-  imageproxy:
-  # management
-  mapi-read-contents:
-  mapi-edit-contents:
-  mapi-bookcover:
-    # public
-  papi-read-users:
-  papi-users-mysql:
-  papi-read-contents:
-  papi-read-records:
-  papi-bookcover:
