@@ -19,9 +19,6 @@ x-mysql-healthcheck: &mysql-healthcheck
   retries: 10
 
 volumes:
-  # imageproxy
-  imageproxy-redis-data:
-
   # neo4j
   neo4j-core-conf:
   neo4j-core-data:
@@ -30,31 +27,53 @@ volumes:
   neo4j-core-metrics:
   neo4j-core-plugins:
 
-  # management
+  # users mysql
+  users-mysql-core-data:
+
+  # imageproxy
+  imageproxy-redis-data:
+
+  # management api
   mapi-bookcover-service-redis-data:
 
-  # public
+  # public api
   papi-read-users-mysql-data:
   papi-bookcover-service-redis-data:
 
 networks:
   # neo4j
   neo4j-core:
+
+  # users mysql
+  users-mysql-core:
+
   # imageproxy
   imageproxy:
-  # management
+
+  # management api
   mapi-read-contents:
   mapi-edit-contents:
   mapi-bookcover:
-    # public
+
+  # public api
   papi-read-users:
-  papi-users-mysql:
   papi-read-contents:
   papi-read-records:
   papi-bookcover:
 
 services:
-  # neo4j
+  # for development tools
+  adminer:
+    image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
+    networks:
+      - users-mysql-core
+    ports:
+      - published: $ADMINER_PORT
+        target: 8080
+    environment:
+      ADMINER_DESIGN: $ADMINER_DESIGN
+
+  # neo4j core
   neo4j-core:
     hostname: neo4j-core
     image: neo4j:4.2-enterprise
@@ -87,6 +106,21 @@ services:
       NEO4J_dbms_connector_bolt_listen__address: ":7687"
       NEO4J_dbms_connector_bolt_advertised__address: neo4j-core:7687
 
+  # users mysql
+  users-mysql-core:
+    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
+    networks:
+      - users-mysql-core
+    healthcheck: *mysql-healthcheck
+    ports:
+      - published: $USERS_MYSQL_CORE_PORT
+        target: 3306
+    environment:
+      MYSQL_ROOT_PASSWORD: $USERS_MYSQL_CORE_ROOT_PASSWORD
+      MYSQL_DATABASE: $USERS_MYSQL_CORE_DATABASE
+    volumes:
+      - users-mysql-core-data:/var/lib/mysql
+
   # imageproxy
   imageproxy:
     image: willnorris/imageproxy@sha256:7e4c77d1b64db9152591dbfd8565d5d377eb8a243040efa4e241b97ba94feb1d
@@ -108,17 +142,6 @@ services:
       - imageproxy
     volumes:
       - imageproxy-redis-data:/data
-
-  # for development tools
-  adminer:
-    image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
-    networks:
-      - papi-users-mysql
-    ports:
-      - published: $ADMINER_PORT
-        target: 8080
-    environment:
-      ADMINER_DESIGN: $ADMINER_DESIGN
 
   # management
   management-api-gateway:
@@ -227,27 +250,16 @@ services:
   papi-read-users-service:
     image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
     depends_on:
-      papi-users-mysql:
+      users-mysql-core:
         condition: service_healthy
     networks:
       - imageproxy
+      - users-mysql-core
       - papi-read-users
     environment:
       PORT: 4000
-      PRISMA_DATABASE_URL: mysql://root:${PAPI_USERS_MYSQL_ROOT_PASSWORD}@papi-users-mysql:3306/${PAPI_USERS_MYSQL_DATABASE}
+      PRISMA_DATABASE_URL: mysql://root:${USERS_MYSQL_CORE_ROOT_PASSWORD}@users-mysql-core:3306/${USERS_MYSQL_CORE_DATABASE}
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-
-  papi-users-mysql:
-    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
-    networks:
-      - papi-users-mysql
-      - papi-read-users
-    environment:
-      MYSQL_ROOT_PASSWORD: ${PAPI_USERS_MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${PAPI_USERS_MYSQL_DATABASE}
-    volumes:
-      - papi-read-users-mysql-data:/var/lib/mysql
-    healthcheck: *mysql-healthcheck
 
   papi-read-contents-service:
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
