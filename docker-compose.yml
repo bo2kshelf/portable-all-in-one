@@ -176,7 +176,7 @@ services:
       BOOKCOVER_SERVICE_URL: http://mapi-bookcover-service:4000/graphql
 
   mapi-read-contents-service:
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:07491452e926dbf5bd8fcad06b98f551ebed812127e48312928aaee15ef978c2
     depends_on:
       neo4j-core:
         condition: service_healthy
@@ -271,7 +271,7 @@ services:
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
 
   papi-read-contents-service:
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:07491452e926dbf5bd8fcad06b98f551ebed812127e48312928aaee15ef978c2
     depends_on:
       neo4j-core:
         condition: service_healthy
@@ -376,7 +376,7 @@ services:
       JWT_SECRET: $JWT_SECRET
 
   auth-api-read-contents-service:
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:07491452e926dbf5bd8fcad06b98f551ebed812127e48312928aaee15ef978c2
     depends_on:
       neo4j-core:
         condition: service_healthy
