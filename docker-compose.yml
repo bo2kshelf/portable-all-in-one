@@ -73,7 +73,7 @@ networks:
 services:
   # for development tools
   adminer:
-    image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
+    image: adminer:standalone@sha256:ace4f8160eaee416242599f63a740317a99936a417fe99e0780aa09f8ea717ff
     networks:
       - users-mysql-core
     ports:
