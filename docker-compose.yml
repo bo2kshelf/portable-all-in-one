@@ -27,6 +27,9 @@ volumes:
   neo4j-core-metrics:
   neo4j-core-plugins:
 
+  # supertokens
+  supertokens-mysql-data:
+
   # users mysql
   users-mysql-core-data:
 
@@ -36,15 +39,15 @@ volumes:
   # management api
   mapi-bookcover-service-redis-data:
 
-  # public api
-  papi-bookcover-service-redis-data:
-
-  # auth api
-  auth-api-bookcover-service-redis-data:
+  # api
+  api-bookcover-service-redis-data:
 
 networks:
   # neo4j
   neo4j-core:
+
+  # supertokens
+  supertokens:
 
   # users mysql
   users-mysql-core:
@@ -57,18 +60,12 @@ networks:
   mapi-edit-contents:
   mapi-bookcover:
 
-  # public api
-  papi-read-users:
-  papi-read-contents:
-  papi-read-records:
-  papi-bookcover:
-
-  # auth api
-  auth-api-read-users:
-  auth-api-current-user:
-  auth-api-read-contents:
-  auth-api-read-records:
-  auth-api-bookcover:
+  # api
+  api-read-users:
+  api-current-user:
+  api-read-contents:
+  api-read-records:
+  api-bookcover:
 
 services:
   # for development tools
@@ -76,11 +73,37 @@ services:
     image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
     networks:
       - users-mysql-core
+      - supertokens
     ports:
       - published: $ADMINER_PORT
         target: 8080
     environment:
       ADMINER_DESIGN: $ADMINER_DESIGN
+
+  # supertoken
+  supertokens-core:
+    image: supertokens/supertokens-mysql
+    networks:
+      - supertokens
+    ports:
+      - published: $SUPERTOKENS_PORT
+        target: 3567
+    environment:
+      MYSQL_HOST: supertokens-mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: $SUPERTOKENS_MYSQL_PASSWORD
+      MYSQL_DATABASE_NAME: $SUPERTOKENS_MYSQL_DATABASE
+
+  supertokens-mysql:
+    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
+    networks:
+      - supertokens
+    environment:
+      MYSQL_ROOT_PASSWORD: $SUPERTOKENS_MYSQL_PASSWORD
+      MYSQL_DATABASE: $SUPERTOKENS_MYSQL_DATABASE
+    volumes:
+      - supertokens-mysql-data:/var/lib/mysql
 
   # neo4j core
   neo4j-core:
@@ -229,34 +252,46 @@ services:
     volumes:
       - mapi-bookcover-service-redis-data:/data
 
-  # public-api
-  public-api-gateway:
-    image: ghcr.io/bo2kshelf/public-api-gateway:develop@sha256:ea7e33f9a076a20ff7a0a434633729c35dcb7604162a87efabfd672bbe779559
+  # api
+  api-gateway:
+    image: ghcr.io/bo2kshelf/authenticated-api-gateway:develop@sha256:0a0bf0fd884f3035089521bf51fa50f09c129f42dea024491460a674a0ae7da8
     depends_on:
-      papi-bookcover-service:
+      supertokens-core:
         condition: service_started
-      papi-read-users-service:
+      api-bookcover-service:
         condition: service_started
-      papi-read-contents-service:
+      api-read-contents-service:
         condition: service_started
-      papi-read-records-service:
+      api-read-records-service:
+        condition: service_started
+      api-read-users-service:
+        condition: service_started
+      api-current-user-service:
         condition: service_started
     networks:
-      - papi-read-users
-      - papi-read-contents
-      - papi-read-records
-      - papi-bookcover
+      - supertokens
+      - api-read-users
+      - api-current-user
+      - api-read-contents
+      - api-read-records
+      - api-bookcover
     ports:
-      - published: ${PUBLIC_API_PORT}
+      - published: $API_PORT
         target: 4000
     environment:
       PORT: 4000
-      BOOKCOVER_SERVICE_URL: http://papi-bookcover-service:4000/graphql
-      READ_USERS_SERVICE_URL: http://papi-read-users-service:4000/graphql
-      READ_CONTENTS_SERVICE_URL: http://papi-read-contents-service:4000/graphql
-      READ_RECORDS_SERVICE_URL: http://papi-read-records-service:4000/graphql
+      JWT_SECRET: $API_JWT_SECRET
+      SUPERTOKENS_CONNECTION_URI: http://supertokens-core:3567
+      SUPERTOKENS_APP_NAME: $SUPERTOKENS_APP_NAME
+      SUPERTOKENS_WEBSITE_DOMAIN: $SUPERTOKENS_WEBSITE_DOMAIN
+      SUPERTOKENS_API_DOMAIN: $SUPERTOKENS_API_DOMAIN
+      BOOKCOVER_SERVICE_URL: http://api-bookcover-service:4000/graphql
+      READ_USERS_SERVICE_URL: http://api-read-users-service:4000/graphql
+      READ_CONTENTS_SERVICE_URL: http://api-read-contents-service:4000/graphql
+      READ_RECORDS_SERVICE_URL: http://api-read-records-service:4000/graphql
+      CURRENT_USER_SERVICE_URL: http://api-current-user-service:4000/graphql
 
-  papi-read-users-service:
+  api-read-users-service:
     image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
     depends_on:
       users-mysql-core:
@@ -264,165 +299,68 @@ services:
     networks:
       - imageproxy
       - users-mysql-core
-      - papi-read-users
+      - api-read-users
     environment:
       PORT: 4000
       PRISMA_DATABASE_URL: mysql://root:${USERS_MYSQL_CORE_ROOT_PASSWORD}@users-mysql-core:3306/${USERS_MYSQL_CORE_DATABASE}
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
 
-  papi-read-contents-service:
+  api-current-user-service:
+    image: ghcr.io/bo2kshelf/current-user-service:develop@sha256:d4ce638cb14d4533ed36780bcf124422eacd395c531aded57cd8cfa6116fc569
+    networks:
+      - api-current-user
+    environment:
+      PORT: 4000
+      JWT_SECRET: $API_JWT_SECRET
+
+  api-read-contents-service:
     image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
     depends_on:
       neo4j-core:
         condition: service_healthy
     networks:
       - neo4j-core
-      - papi-read-contents
+      - api-read-contents
     environment:
       PORT: 4000
       NEO4J_URL: neo4j://neo4j-core:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
-  papi-read-records-service:
+  api-read-records-service:
     image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:44ba6f46f0d39d413e9787feac78ecef58965b1ccceced03d79072cc1a04726b
     depends_on:
       neo4j-core:
         condition: service_healthy
     networks:
       - neo4j-core
-      - papi-read-records
+      - api-read-records
     environment:
       PORT: 4000
       NEO4J_URL: neo4j://neo4j-core:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
-  papi-bookcover-service:
+  api-bookcover-service:
     image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
     networks:
-      - papi-bookcover
+      - api-bookcover
       - imageproxy
     depends_on:
-      papi-bookcover-service-redis:
+      api-bookcover-service-redis:
         condition: service_healthy
     environment:
       PORT: 4000
       RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
       RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-      REDIS_HOST: papi-bookcover-service-redis
+      REDIS_HOST: api-bookcover-service-redis
       REDIS_PORT: 6379
 
-  papi-bookcover-service-redis:
+  api-bookcover-service-redis:
     image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
     healthcheck: *redis-healthcheck
     networks:
-      - papi-bookcover
+      - api-bookcover
     volumes:
-      - papi-bookcover-service-redis-data:/data
-
-  # auth-api
-  auth-api-gateway:
-    image: ghcr.io/bo2kshelf/authenticated-api-gateway:develop@sha256:2089bf123727338b8807589a2b13c73ec61a09367d748cff7da72e062d642bf7
-    depends_on:
-      auth-api-bookcover-service:
-        condition: service_started
-      auth-api-read-contents-service:
-        condition: service_started
-      auth-api-read-records-service:
-        condition: service_started
-      auth-api-read-users-service:
-        condition: service_started
-      auth-api-current-user-service:
-        condition: service_started
-    networks:
-      - auth-api-read-users
-      - auth-api-current-user
-      - auth-api-read-contents
-      - auth-api-read-records
-      - auth-api-bookcover
-    ports:
-      - published: $AUTH_API_PORT
-        target: 4000
-    environment:
-      PORT: 4000
-      BOOKCOVER_SERVICE_URL: http://auth-api-bookcover-service:4000/graphql
-      READ_USERS_SERVICE_URL: http://auth-api-read-users-service:4000/graphql
-      READ_CONTENTS_SERVICE_URL: http://auth-api-read-contents-service:4000/graphql
-      READ_RECORDS_SERVICE_URL: http://auth-api-read-records-service:4000/graphql
-      CURRENT_USER_SERVICE_URL: http://auth-api-current-user-service:4000/graphql
-
-  auth-api-read-users-service:
-    image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
-    depends_on:
-      users-mysql-core:
-        condition: service_healthy
-    networks:
-      - imageproxy
-      - users-mysql-core
-      - auth-api-read-users
-    environment:
-      PORT: 4000
-      PRISMA_DATABASE_URL: mysql://root:${USERS_MYSQL_CORE_ROOT_PASSWORD}@users-mysql-core:3306/${USERS_MYSQL_CORE_DATABASE}
-      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-
-  auth-api-current-user-service:
-    image: ghcr.io/bo2kshelf/current-user-service:develop@sha256:eb555808bc46ffb7d214aede2aa82725341968faab956375b8b0f3687fa746e4
-    networks:
-      - auth-api-current-user
-    environment:
-      PORT: 4000
-      JWT_SECRET: $JWT_SECRET
-
-  auth-api-read-contents-service:
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
-    depends_on:
-      neo4j-core:
-        condition: service_healthy
-    networks:
-      - neo4j-core
-      - auth-api-read-contents
-    environment:
-      PORT: 4000
-      NEO4J_URL: neo4j://neo4j-core:7687
-      NEO4J_USERNAME: ${NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-
-  auth-api-read-records-service:
-    image: ghcr.io/bo2kshelf/read-records-service:develop@sha256:44ba6f46f0d39d413e9787feac78ecef58965b1ccceced03d79072cc1a04726b
-    depends_on:
-      neo4j-core:
-        condition: service_healthy
-    networks:
-      - neo4j-core
-      - auth-api-read-records
-    environment:
-      PORT: 4000
-      NEO4J_URL: neo4j://neo4j-core:7687
-      NEO4J_USERNAME: ${NEO4J_USERNAME}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-
-  auth-api-bookcover-service:
-    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
-    networks:
-      - auth-api-bookcover
-      - imageproxy
-    depends_on:
-      auth-api-bookcover-service-redis:
-        condition: service_healthy
-    environment:
-      PORT: 4000
-      RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
-      RAKUTEN_APPLICATION_SECRET: $RAKUTEN_APPLICATION_SECRET
-      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
-      REDIS_HOST: auth-api-bookcover-service-redis
-      REDIS_PORT: 6379
-
-  auth-api-bookcover-service-redis:
-    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
-    healthcheck: *redis-healthcheck
-    networks:
-      - auth-api-bookcover
-    volumes:
-      - auth-api-bookcover-service-redis-data:/data
+      - api-bookcover-service-redis-data:/data
