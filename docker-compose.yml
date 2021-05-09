@@ -368,7 +368,7 @@ services:
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
 
   auth-api-current-user-service:
-    image: ghcr.io/bo2kshelf/current-user-service:develop@sha256:eb555808bc46ffb7d214aede2aa82725341968faab956375b8b0f3687fa746e4
+    image: ghcr.io/bo2kshelf/current-user-service:develop@sha256:d4ce638cb14d4533ed36780bcf124422eacd395c531aded57cd8cfa6116fc569
     networks:
       - auth-api-current-user
     environment:
