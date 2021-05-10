@@ -214,9 +214,6 @@ services:
 
   mapi-edit-contents-service:
     image: ghcr.io/bo2kshelf/edit-contents-service:develop@sha256:c977f55605365b4b60950bb729c66bcf3b9e168b4dcaf325c2adaada96bf5d6d
-    # build:
-    #   context: ./edit-contents-service
-    #   dockerfile: Dockerfile
     depends_on:
       neo4j-core:
         condition: service_healthy
