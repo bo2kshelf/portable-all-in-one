@@ -227,7 +227,7 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
   mapi-bookcover-service:
-    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
+    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:41f41956eada6134a756d6b0432ba26e5fc6553ce8292a4d57f3f86f9c35064c
     networks:
       - mapi-bookcover
     depends_on:
@@ -339,7 +339,7 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
 
   api-bookcover-service:
-    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:b18da695a196e9665e562eace65d65f669620a554607c87fc3a4573594769a07
+    image: ghcr.io/bo2kshelf/bookcover-service:develop@sha256:41f41956eada6134a756d6b0432ba26e5fc6553ce8292a4d57f3f86f9c35064c
     networks:
       - api-bookcover
       - imageproxy
