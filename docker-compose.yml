@@ -177,7 +177,7 @@ services:
 
   # management
   management-api-gateway:
-    image: ghcr.io/bo2kshelf/management-api-gateway:develop@sha256:dabb3121952b1e90ba0913e94a8c85dd77947e0acb86bc2164a8e7510766d6fd
+    image: ghcr.io/bo2kshelf/management-api-gateway:develop@sha256:acf46e7985c90215f2b9a308061ca1b24c951cab840b2cf16c8ed539b707d956
     depends_on:
       mapi-read-contents-service:
         condition: service_started
