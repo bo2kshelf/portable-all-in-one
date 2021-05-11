@@ -40,6 +40,7 @@ volumes:
   mapi-bookcover-service-redis-data:
 
   # api
+  api-users-picture-service-mysql-data:
   api-bookcover-service-redis-data:
 
 networks:
@@ -62,6 +63,7 @@ networks:
 
   # api
   api-read-users:
+  api-users-picture:
   api-current-user:
   api-read-contents:
   api-read-records:
@@ -251,7 +253,7 @@ services:
 
   # api
   api-gateway:
-    image: ghcr.io/bo2kshelf/authenticated-api-gateway:develop@sha256:08831a8e5db75357d56e63728006924ca749bd9aea4adff47685f3184ecc08f3
+    image: ghcr.io/bo2kshelf/authenticated-api-gateway:develop@sha256:ea6ec7a41ca4e7addee62fee2c2f0b7668b892839d6751a472d867fee1f05c34
     depends_on:
       supertokens-core:
         condition: service_started
@@ -263,11 +265,14 @@ services:
         condition: service_started
       api-read-users-service:
         condition: service_started
+      api-read-users-service:
+        condition: service_started
       api-current-user-service:
         condition: service_started
     networks:
       - supertokens
       - api-read-users
+      - api-users-picture
       - api-current-user
       - api-read-contents
       - api-read-records
@@ -282,14 +287,17 @@ services:
       SUPERTOKENS_APP_NAME: $SUPERTOKENS_APP_NAME
       SUPERTOKENS_WEBSITE_DOMAIN: $SUPERTOKENS_WEBSITE_DOMAIN
       SUPERTOKENS_API_DOMAIN: $SUPERTOKENS_API_DOMAIN
+      GITHUB_CLIENT_ID: $GITHUB_CLIENT_ID
+      GITHUB_CLIENT_SECRET: $GITHUB_CLIENT_SECRET
       BOOKCOVER_SERVICE_URL: http://api-bookcover-service:4000/graphql
       READ_USERS_SERVICE_URL: http://api-read-users-service:4000/graphql
+      USERS_PICTURE_SERVICE_URL: http://api-users-picture-service:4000/graphql
       READ_CONTENTS_SERVICE_URL: http://api-read-contents-service:4000/graphql
       READ_RECORDS_SERVICE_URL: http://api-read-records-service:4000/graphql
       CURRENT_USER_SERVICE_URL: http://api-current-user-service:4000/graphql
 
   api-read-users-service:
-    image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
+    image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:4d34d43c5d2398cd815fc2859aa527bdb28e91f06b0906239c7aae028163b9a7
     depends_on:
       users-mysql-core:
         condition: service_healthy
@@ -304,6 +312,35 @@ services:
       PORT: 4000
       PRISMA_DATABASE_URL: mysql://root:${USERS_MYSQL_CORE_ROOT_PASSWORD}@users-mysql-core:3306/${USERS_MYSQL_CORE_DATABASE}
       IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+
+  api-users-picture-service:
+    image: ghcr.io/bo2kshelf/users-picture-service:develop@sha256:96ff44c2ea1e824bb30451375109a59a9c046dae0f58014d195d22966a48902e
+    depends_on:
+      api-users-picture-service-mysql:
+        condition: service_healthy
+    networks:
+      - api-users-picture
+    ports:
+      - published: $API_USERS_PICTURE_SERVICE_PORT
+        target: 4000
+    environment:
+      PORT: 4000
+      PRISMA_DATABASE_URL: mysql://root:${API_USERS_PICTURE_SERVICE_MYSQL_ROOT_PASSWORD}@api-users-picture-service-mysql:3306/${API_USERS_PICTURE_SERVICE_MYSQL_DATABASE}
+      IMAGEPROXY_BASE_URL: $IMAGEPROXY_BASE_URL
+
+  api-users-picture-service-mysql:
+    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
+    networks:
+      - api-users-picture
+    healthcheck: *mysql-healthcheck
+    ports:
+      - published: $API_USERS_PICTURE_SERVICE_MYSQL_PORT
+        target: 3306
+    environment:
+      MYSQL_ROOT_PASSWORD: $API_USERS_PICTURE_SERVICE_MYSQL_ROOT_PASSWORD
+      MYSQL_DATABASE: $API_USERS_PICTURE_SERVICE_MYSQL_DATABASE
+    volumes:
+      - api-users-picture-service-mysql-data:/var/lib/mysql
 
   api-current-user-service:
     image: ghcr.io/bo2kshelf/current-user-service:develop@sha256:d4ce638cb14d4533ed36780bcf124422eacd395c531aded57cd8cfa6116fc569
