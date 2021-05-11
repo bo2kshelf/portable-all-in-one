@@ -112,9 +112,9 @@ services:
     networks:
       - neo4j-core
     ports:
-      - published: $NEO4J_HTTP_PORT
+      - published: $NEO4J_CORE_HTTP_PORT
         target: 7474
-      - published: $NEO4J_BOLT_PORT
+      - published: $NEO4J_CORE_BOLT_PORT
         target: 7687
     healthcheck: *neo4j-healthcheck
     volumes:
@@ -297,6 +297,9 @@ services:
       - imageproxy
       - users-mysql-core
       - api-read-users
+    ports:
+      - published: $API_READ_USERS_SERVICE_PORT
+        target: 4000
     environment:
       PORT: 4000
       PRISMA_DATABASE_URL: mysql://root:${USERS_MYSQL_CORE_ROOT_PASSWORD}@users-mysql-core:3306/${USERS_MYSQL_CORE_DATABASE}
@@ -306,6 +309,9 @@ services:
     image: ghcr.io/bo2kshelf/current-user-service:develop@sha256:d4ce638cb14d4533ed36780bcf124422eacd395c531aded57cd8cfa6116fc569
     networks:
       - api-current-user
+    ports:
+      - published: $API_CURRENT_USER_SERVICE_PORT
+        target: 4000
     environment:
       PORT: 4000
       JWT_SECRET: $API_JWT_SECRET
@@ -318,6 +324,9 @@ services:
     networks:
       - neo4j-core
       - api-read-contents
+    ports:
+      - published: $API_READ_CONTENTS_SERVICE_PORT
+        target: 4000
     environment:
       PORT: 4000
       NEO4J_URL: neo4j://neo4j-core:7687
@@ -332,6 +341,9 @@ services:
     networks:
       - neo4j-core
       - api-read-records
+    ports:
+      - published: $API_READ_RECORDS_SERVICE_PORT
+        target: 4000
     environment:
       PORT: 4000
       NEO4J_URL: neo4j://neo4j-core:7687
@@ -346,6 +358,9 @@ services:
     depends_on:
       api-bookcover-service-redis:
         condition: service_healthy
+    ports:
+      - published: $API_BOOKCOVER_SERVICE_PORT
+        target: 4000
     environment:
       PORT: 4000
       RAKUTEN_APPLICATION_ID: $RAKUTEN_APPLICATION_ID
