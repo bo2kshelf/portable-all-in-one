@@ -289,7 +289,7 @@ services:
       CURRENT_USER_SERVICE_URL: http://api-current-user-service:4000/graphql
 
   api-read-users-service:
-    image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:04ce0b1215636e1a05b4f47f742f02605c752c2f43ef5d709add3f0b2b6f167b
+    image: ghcr.io/bo2kshelf/read-users-service:develop@sha256:4d34d43c5d2398cd815fc2859aa527bdb28e91f06b0906239c7aae028163b9a7
     depends_on:
       users-mysql-core:
         condition: service_healthy
