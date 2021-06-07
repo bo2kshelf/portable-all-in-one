@@ -199,7 +199,7 @@ services:
       BOOKCOVER_SERVICE_URL: http://mapi-bookcover-service:4000/graphql
 
   mapi-read-contents-service:
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:1def9404e7217bc83b356b3b97faa177202330263a26bdc50d7d52c3ec43fc97
     depends_on:
       neo4j-core:
         condition: service_healthy
@@ -317,7 +317,7 @@ services:
       JWT_SECRET: $API_JWT_SECRET
 
   api-read-contents-service:
-    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:3aa9278735594845b159c5cf36fb203b1309e067189632937f62ce49e9c708a9
+    image: ghcr.io/bo2kshelf/read-contents-service:develop@sha256:1def9404e7217bc83b356b3b97faa177202330263a26bdc50d7d52c3ec43fc97
     depends_on:
       neo4j-core:
         condition: service_healthy
