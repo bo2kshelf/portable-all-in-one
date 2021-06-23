@@ -96,7 +96,7 @@ services:
       MYSQL_DATABASE_NAME: $SUPERTOKENS_MYSQL_DATABASE
 
   supertokens-mysql:
-    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
+    image: mysql:8.0@sha256:52b8406e4c32b8cf0557f1b74517e14c5393aff5cf0384eff62d9e81f4985d4b
     networks:
       - supertokens
     environment:
@@ -140,7 +140,7 @@ services:
 
   # users mysql
   users-mysql-core:
-    image: mysql:8.0@sha256:04ee7141256e83797ea4a84a4d31b1f1bc10111c8d1bc1879d52729ccd19e20a
+    image: mysql:8.0@sha256:52b8406e4c32b8cf0557f1b74517e14c5393aff5cf0384eff62d9e81f4985d4b
     networks:
       - users-mysql-core
     healthcheck: *mysql-healthcheck
