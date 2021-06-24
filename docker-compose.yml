@@ -168,7 +168,7 @@ services:
       IMAGEPROXY_CACHE: redis://imageproxy-redis:6379
 
   imageproxy-redis:
-    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
+    image: redis:6@sha256:7c540ceff53f0522f6b1c264d8142df08316173d103586ddf51ed91ca49deec8
     healthcheck: *redis-healthcheck
     networks:
       - imageproxy
@@ -242,7 +242,7 @@ services:
       REDIS_PORT: 6379
 
   mapi-bookcover-service-redis:
-    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
+    image: redis:6@sha256:7c540ceff53f0522f6b1c264d8142df08316173d103586ddf51ed91ca49deec8
     healthcheck: *redis-healthcheck
     networks:
       - mapi-bookcover
@@ -370,7 +370,7 @@ services:
       REDIS_PORT: 6379
 
   api-bookcover-service-redis:
-    image: redis:6@sha256:e10f55f92478715698a2cef97c2bbdc48df2a05081edd884938903aa60df6396
+    image: redis:6@sha256:7c540ceff53f0522f6b1c264d8142df08316173d103586ddf51ed91ca49deec8
     healthcheck: *redis-healthcheck
     networks:
       - api-bookcover
