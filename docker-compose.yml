@@ -155,7 +155,7 @@ services:
 
   # imageproxy
   imageproxy:
-    image: willnorris/imageproxy@sha256:7e4c77d1b64db9152591dbfd8565d5d377eb8a243040efa4e241b97ba94feb1d
+    image: willnorris/imageproxy@sha256:3380d7b1ab14fab4b19d8fb4c4a055cec06ed28397bd1ac95bc138dbb34eaa35
     networks:
       - imageproxy
     ports:
