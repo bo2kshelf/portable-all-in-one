@@ -108,7 +108,7 @@ services:
   # neo4j core
   neo4j-core:
     hostname: neo4j-core
-    image: neo4j:4.2-enterprise
+    image: neo4j:4.3-enterprise@sha256:5cef43d903a52349022ea5658b29c15623f033e6fa6ef94bd422cedd6e31583c
     networks:
       - neo4j-core
     ports:
