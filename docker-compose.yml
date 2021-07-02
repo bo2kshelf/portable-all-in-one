@@ -82,7 +82,7 @@ services:
 
   # supertoken
   supertokens-core:
-    image: supertokens/supertokens-mysql
+    image: supertokens/supertokens-mysql@sha256:31020b2fc542229043cac5f0d6a1ed695be220a0243638623a427b1496a62898
     networks:
       - supertokens
     ports:
@@ -108,7 +108,7 @@ services:
   # neo4j core
   neo4j-core:
     hostname: neo4j-core
-    image: neo4j:4.2-enterprise
+    image: neo4j:4.2-enterprise@sha256:607bf15c4187727458ce9ef3140c8aaefe95146ed52ea12a2c23c7e908bf8bd2
     networks:
       - neo4j-core
     ports:
