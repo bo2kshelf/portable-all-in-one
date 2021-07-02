@@ -70,7 +70,7 @@ networks:
 services:
   # for development tools
   adminer:
-    image: adminer:standalone@sha256:370c04eb26f585c408986d89d1d9c5e62f387d4afdd5a49aa13f7c5f53790262
+    image: adminer:standalone@sha256:4b0399051b2411cc55d73e163e363e8000e816dfb5fcfb833de733bb640639b1
     networks:
       - users-mysql-core
       - supertokens
