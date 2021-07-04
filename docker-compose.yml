@@ -251,7 +251,7 @@ services:
 
   # api
   api-gateway:
-    image: ghcr.io/bo2kshelf/authenticated-api-gateway:develop@sha256:08831a8e5db75357d56e63728006924ca749bd9aea4adff47685f3184ecc08f3
+    image: ghcr.io/bo2kshelf/authenticated-api-gateway:develop@sha256:6876e8d64e7cde6504b1e25a172f1d73798466a7b446b0fad8093f88b9b128ae
     depends_on:
       supertokens-core:
         condition: service_started
